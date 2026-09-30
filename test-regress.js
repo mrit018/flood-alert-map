@@ -14,10 +14,10 @@ const stub = `
 window.__notifs = [];
 window.__revoked = [];
 window.__created = 0;
-const _create = URL.createObjectURL.bind(URL);
-URL.createObjectURL = function(b){ window.__created++; const u = _create ? _create(b) : 'blob:x'+(window.__created); return u; };
-const _revoke = URL.revokeObjectURL.bind(URL);
-URL.revokeObjectURL = function(u){ window.__revoked.push(u); try{ _revoke(u); }catch(e){} };
+const _create = (typeof URL.createObjectURL === 'function') ? URL.createObjectURL.bind(URL) : null;
+URL.createObjectURL = function(b){ window.__created++; return _create ? _create(b) : 'blob:x' + window.__created; };
+const _revoke = (typeof URL.revokeObjectURL === 'function') ? URL.revokeObjectURL.bind(URL) : null;
+URL.revokeObjectURL = function(u){ window.__revoked.push(u); if (_revoke) { try{ _revoke(u); }catch(e){} } };
 function makeLayer(){
   return {
     addTo(){return this;}, clearLayers(){return this;}, bindPopup(){return this;}, on(){return this;},
@@ -26,7 +26,7 @@ function makeLayer(){
   };
 }
 window.L = {
-  map: () => ({ setView(){return this;}, flyTo(){return this;}, getZoom(){return 12;}, invalidateSize(){return this;}, fitBounds(){return this;}, closePopup(){return this;}, on(){return this;} }),
+  map: () => ({ setView(){return this;}, flyTo(){return this;}, getZoom(){return 12;}, invalidateSize(){return this;}, fitBounds(){return this;}, closePopup(){return this;}, setMaxBounds(){return this;}, on(){return this;} }),
   tileLayer: () => ({addTo(){return this;}}),
   layerGroup: () => makeLayer(),
   circle: () => ({addTo(){return this;}}),
@@ -38,11 +38,12 @@ window.Notification = function(t, o){ this.title=t; this.body=o&&o.body; this.ta
 window.Notification.permission = 'granted';
 window.Notification.requestPermission = () => { window.Notification.permission='granted'; return Promise.resolve('granted'); };
 `;
-html = html.replace(/<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/leaflet[^"]*"><\/script>/, '<script>'+stub+'</script>');
 
 const dom = new JSDOM(html, { runScripts:'dangerously', pretendToBeVisual:true, url:'http://localhost/', virtualConsole:vc,
   beforeParse(w){
-    w.indexedDB = fdb.indexedDB; w.IDBKeyRange = fdb.IDBKeyRange;
+    w.eval(stub);
+    w.indexedDB = fdb.indexedDB;
+    w.IDBKeyRange = fdb.IDBKeyRange;
     if (!w.URL.createObjectURL) w.URL.createObjectURL = () => 'blob:fake/' + (Math.random());
     if (!w.URL.revokeObjectURL) w.URL.revokeObjectURL = () => {};
     if (!w.matchMedia) w.matchMedia = () => ({matches:false, addEventListener(){}, removeEventListener(){}});
@@ -63,7 +64,7 @@ function sync(next){
   w.dispatchEvent(new w.StorageEvent('storage',{key:'floodwatch.v2',newValue:JSON.stringify(next),storageArea:w.localStorage}));
 }
 const now = Date.now();
-const R = (id, posts) => ({id, lat:13.75, lng:100.5, level:2, depth:20, place:'จุด '+id, note:'', ts:now, resolved:false, posts:posts||[]});
+const R = (id, posts) => ({id, lat:14.3, lng:99.4, level:2, depth:20, place:'จุด '+id, note:'', ts:now, resolved:false, posts:posts||[]});
 
 (async function(){
   await wait(250);
@@ -163,7 +164,7 @@ const R = (id, posts) => ({id, lat:13.75, lng:100.5, level:2, depth:20, place:'�
   const base = stored();
   const imp = {
     v:2,
-    reports:[{ id:'rA', lat:13.75, lng:100.5, level:2, depth:99, place:'ชื่อใหม่', note:'โน้ตใหม่', ts:now, resolved:true,
+    reports:[{ id:'rA', lat:14.3, lng:99.4, level:2, depth:99, place:'ชื่อใหม่', note:'โน้ตใหม่', ts:now, resolved:true,
       posts:[{ id:'impPost1', text:'โพสตจากไฟล์นำเข้า', photos:[], author:{name:'ผู้นำเข้า',phone:'080-000-0000'}, ts:now }] }],
     photos:{}
   };

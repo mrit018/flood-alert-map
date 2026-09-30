@@ -1,57 +1,38 @@
 const fs = require('fs');
-const path = require('path');
 const { JSDOM, VirtualConsole } = require('jsdom');
-
+const fdb = require('fake-indexeddb');
 require('fake-indexeddb/auto');
 
 const FILE = '/Users/macbookpro/Projects/flood-alert-map/flood-alert-map.html';
-let html = fs.readFileSync(FILE, 'utf8');
+const html = fs.readFileSync(FILE, 'utf8');
 
 const errors = [];
 const vc = new VirtualConsole();
 vc.on('jsdomError', e => errors.push('jsdomError: ' + (e.stack || e.message)));
 vc.on('error', (...a) => errors.push('console.error: ' + a.join(' ')));
 
-// ---- stub Leaflet (no network, no real map) ----
-const leafletCalls = [];
-function makeLayer() {
-  return {
-    _layers: [],
-    addTo(m) { return this; },
-    clearLayers() { this._layers = []; return this; },
-    bindPopup() { return this; },
-    on() { return this; },
-    openPopup() { return this; },
-    closePopup() { return this; },
-    setIcon() { return this; },
-    getElement() { return null; },
-    update() { return this; }
-  };
-}
-const leafletStub = `
-window.L = {
-  map: function(){ return {
-    setView: function(){return this}, flyTo: function(){return this},
-    getZoom: function(){return 12}, invalidateSize: function(){return this},
-    fitBounds: function(){return this}, closePopup: function(){return this},
-    on: function(){return this}
-  };},
-  tileLayer: function(){ return {addTo: function(){return this}}; },
-  layerGroup: function(){ return makeLayer(); },
-  circle: function(){ return {addTo: function(){return this}}; },
-  marker: function(){ return makeLayer(); },
-  divIcon: function(o){ return o; },
-  latLngBounds: function(){ return {pad: function(){return this}}; }
-};
+// ---- stub Leaflet + Notification (ไม่ต้องต่อเน็ต) ----
+const stubs = `
 function makeLayer(){
   return {
-    addTo: function(){return this}, clearLayers: function(){return this},
-    bindPopup: function(){return this}, on: function(){return this},
-    openPopup: function(){return this}, closePopup: function(){return this},
-    setIcon: function(){return this}, getElement: function(){return null}, update: function(){return this}
+    addTo(){return this;}, clearLayers(){return this;}, bindPopup(){return this;},
+    on(){return this;}, openPopup(){return this;}, closePopup(){return this;},
+    setIcon(){return this;}, getElement(){return null;}, update(){return this;}
   };
 }
-// stub Notification API: permission = 'granted' เพื่อทดสอบเส้นทางการแจ้งเตือน
+window.L = {
+  map: function(){ return {
+    setView(){return this;}, flyTo(){return this;}, getZoom(){return 12;},
+    invalidateSize(){return this;}, fitBounds(){return this;}, closePopup(){return this;},
+    setMaxBounds(){return this;}, on(){return this;}
+  };},
+  tileLayer: function(){ return {addTo(){return this;}}; },
+  layerGroup: function(){ return makeLayer(); },
+  circle: function(){ return {addTo(){return this;}}; },
+  marker: function(){ return makeLayer(); },
+  divIcon: function(o){ return o; },
+  latLngBounds: function(){ return {pad: function(){ return {pad(){return this;}}; } }; }
+};
 window.__notifications = [];
 window.Notification = function(title, opts){
   this.title = title; this.body = opts && opts.body; this.tag = opts && opts.tag; this.icon = null;
@@ -60,17 +41,8 @@ window.Notification = function(title, opts){
   this.onclick = null;
 };
 window.Notification.permission = 'granted';
-window.Notification.requestPermission = function(){ window.Notification.permission = 'granted'; return Promise.resolve('granted'); };
+window.Notification.requestPermission = function(){ window.Notification.permission='granted'; return Promise.resolve('granted'); };
 `;
-
-// แทน script CDN ของ Leaflet ด้วย stub (jsdom ไม่โหลดข้างนอก)
-html = html.replace(
-  /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/leaflet[^"]*"><\/script>/,
-  '<script>' + leafletStub + '</script>'
-);
-if (!/window\.L\s*=/.test(html)) {
-  throw new Error('failed to inject Leaflet stub — script tag pattern changed');
-}
 
 const dom = new JSDOM(html, {
   runScripts: 'dangerously',
@@ -78,25 +50,21 @@ const dom = new JSDOM(html, {
   url: 'http://localhost/',
   virtualConsole: vc,
   beforeParse(window) {
-    window.indexedDB = require('fake-indexeddb').indexedDB;
-    window.IDBKeyRange = require('fake-indexeddb').IDBKeyRange;
+    window.eval(stubs);
+    window.indexedDB = fdb.indexedDB;
+    window.IDBKeyRange = fdb.IDBKeyRange;
     if (!window.matchMedia) {
       window.matchMedia = function () {
         return { matches: false, addEventListener() {}, removeEventListener() {} };
       };
     }
-    // jsdom ไม่มี URL.createObjectURL — ทำ stub ให้ตรวจเส้นทางโค้ดของแอปได้
-    if (!window.URL.createObjectURL) {
-      let n = 0;
-      window.URL.createObjectURL = () => 'blob:fake/' + (++n);
-      window.URL.revokeObjectURL = () => {};
-    }
-    // jsdom ยังไม่มี <dialog> API เต็มรูปแบบ
+    if (!window.URL.createObjectURL) window.URL.createObjectURL = () => 'blob:fake/' + (Math.random());
+    if (!window.URL.revokeObjectURL) window.URL.revokeObjectURL = () => {};
     const proto = window.HTMLDialogElement && window.HTMLDialogElement.prototype;
     if (proto && !proto.showModal) {
       proto.showModal = function () { this.open = true; };
       proto.show = function () { this.open = true; };
-      proto.close = function (v) { this.open = false; this._ret = v; };
+      proto.close = function () { this.open = false; };
     }
   }
 });
@@ -123,10 +91,10 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   await wait(300);
 
   ok('app boots without script errors', errors.length === 0, errors.join(' | ').slice(0, 400));
-  ok('seed data rendered in list', doc.querySelectorAll('#list li[data-id]').length === 6,
+  ok('seed data rendered in list', doc.querySelectorAll('#list li[data-id]').length === 10,
      'count=' + doc.querySelectorAll('#list li[data-id]').length);
   ok('feed tab badge populated', $('#nFeed').textContent === '4', 'nFeed=' + $('#nFeed').textContent);
-  ok('spots badge populated', $('#nSpots').textContent === '6', 'nSpots=' + $('#nSpots').textContent);
+  ok('spots badge populated', $('#nSpots').textContent === '10', 'nSpots=' + $('#nSpots').textContent);
 
   // ---- photo pickers wired into DOM (so .click() works) ----
   const inputs = doc.querySelectorAll('input[data-picker]');
@@ -137,7 +105,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   click(firstLi);
   await wait(50);
   ok('list click opens detail view', $('#paneSpot').hidden === false);
-  ok('detail shows posts thread', doc.querySelectorAll('#detail .thread > li[data-post]').length === 2,
+  ok('detail shows posts thread', doc.querySelectorAll('#detail .thread > li[data-post]').length === 1,
      'posts=' + doc.querySelectorAll('#detail .thread > li[data-post]').length);
   ok('back button present', !!$('#detail [data-act="back"]'));
 
@@ -158,7 +126,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   click($('#detail [data-act="quickPost"]'));
   await wait(120);
   const postsNow = doc.querySelectorAll('#detail .thread > li[data-post]').length;
-  ok('quick post appended to thread', postsNow === 3, 'posts=' + postsNow);
+  ok('quick post appended to thread', postsNow === 2, 'posts=' + postsNow);
   ok('feed count grew', $('#nFeed').textContent === '5', 'nFeed=' + $('#nFeed').textContent);
 
   // ---- quick post validation (empty) ----
@@ -166,7 +134,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ta2.value = '   ';
   click($('#detail [data-act="quickPost"]'));
   await wait(60);
-  ok('empty quick post rejected', doc.querySelectorAll('#detail .thread > li[data-post]').length === 3);
+  ok('empty quick post rejected', doc.querySelectorAll('#detail .thread > li[data-post]').length === 2);
 
   // ---- switch to feed tab, click item, confirm it routes to detail ----
   click($('#tabFeed'));
@@ -277,10 +245,18 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   $('#dlgPost').close();
 
   // ---- hidePhone hides own number in UI ----
-  const phoneRow = Array.from(doc.querySelectorAll('#detail .thread .phone'))
-    .map(n => n.textContent).join('|');
-  ok('own hidden phone shows placeholder, not number', !phoneRow.includes('081-234-5678'), phoneRow.slice(0, 120));
-  ok('other users phone still visible', phoneRow.includes('089-777-1122') || phoneRow.length > 0, phoneRow.slice(0, 120));
+  // โพสตของผู้ใช้เอง (ชื่อที่ตั้งไว้) ต้องแสดง "ซ่อนเบอร์โทร" ไม่ใช่ตัวเลข
+  const ownPost = Array.from(doc.querySelectorAll('#detail .thread > li'))
+    .find(li => li.textContent.includes('ทดสอบ ผู้ใช้'));
+  ok('own post exists to test', !!ownPost, '');
+  const ownPhone = ownPost ? (ownPost.querySelector('.phone') || {}).textContent || '' : '';
+  ok('own hidden phone shows placeholder, not the number',
+     ownPhone.includes('ซ่อนเบอร์โทร') && !ownPhone.includes('081-234-5678'), ownPhone);
+  // โพสตของคนอื่นยังแสดงเบอร์ตามปกติ
+  const otherPost = Array.from(doc.querySelectorAll('#detail .thread > li'))
+    .find(li => !li.textContent.includes('ทดสอบ ผู้ใช้') && li.querySelector('.phone a[href^="tel:"]'));
+  ok('other users phone still visible as tel link', !!otherPost,
+     otherPost ? 'ok' : 'no other post with phone in this report');
 
   // ---- filter chips ----
   click($('#tabSpots'));
@@ -345,7 +321,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   // seed ใหม่ (เพราะเทสต์ก่อนหน้าล้างข้อมูลไปแล้ว)
   const now = Date.now();
   const rs = [{
-    id: 'phrep1', lat: 13.7123, lng: 100.5560, level: 3, depth: 90,
+    id: 'phrep1', lat: 14.0075, lng: 99.5767, level: 3, depth: 90,
     place: 'จุดสำหรับทดสอบรูป', note: 'ทดสอบ', ts: now, resolved: false,
     posts: [{ id: 'php1', text: 'สถานการณ์ตอนนี้', photos: [PH],
               author: { name: 'ผู้ทดสอบ', phone: '' }, ts: now }]
@@ -361,7 +337,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   click(Array.from(doc.querySelectorAll('#chips .chip')).find(c => c.textContent.includes('ทั้งหมด')));
   await wait(60);
   const firstRow = doc.querySelector('#list li[data-id]');
-  ok('photo badge shown on list row', !!firstRow && firstRow.textContent.includes('รูป'), firstRow.textContent.replace(/\s+/g,' ').slice(0,90));
+  ok('photo badge shown on list row', !!firstRow && firstRow.textContent.includes('รูป'),
+     firstRow ? firstRow.textContent.replace(/\s+/g,' ').slice(0,90) : 'no rows');
 
   click(firstRow);
   await wait(300);
@@ -404,7 +381,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   const payload = {
     v: 2,
     reports: [{
-      id: 'imp1', lat: 13.7, lng: 100.5, level: 3, depth: 60,
+      id: 'imp1', lat: 14.2, lng: 99.3, level: 3, depth: 60,
       place: 'จุดที่นำเข้า', note: 'ทดสอบ', ts: Date.now(), resolved: false,
       posts: [{ id: 'imp1p', text: 'โพสตจากไฟล์ที่นำเข้า', photos: ['impph1'],
                 author: { name: 'ผู้นำเข้า', phone: '089-000-1111' }, ts: Date.now() }]
@@ -468,7 +445,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   /* ---------- ป้องกัน XSS ---------- */
   const xss = {
     v: 2,
-    reports: [{ id: 'x1', lat: 13.75, lng: 100.5, level: 1, depth: null,
+    reports: [{ id: 'x1', lat: 14.3, lng: 99.4, level: 1, depth: null,
       place: '<img src=x onerror="window.__XSS=1">', note: '<script>window.__XSS=1<\/script>', ts: Date.now(), resolved: false,
       posts: [{ id: 'x1p', text: '<b onmouseover="window.__XSS=1">hi</b>', photos: [],
                 author: { name: '"><svg onload=window.__XSS=1>', phone: '' }, ts: Date.now() }] }]
@@ -487,7 +464,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   /* ---------- การแจ้งเตือน: ติดตามจุด + โพสตใหม่ ---------- */
   const now2 = Date.now();
   const snap = {
-    id: 'al1', lat: 13.75, lng: 100.5, level: 2, depth: 30,
+    id: 'al1', lat: 14.3, lng: 99.4, level: 2, depth: 30,
     place: 'จุดที่ติดตาม', note: '', ts: now2, resolved: false, posts: []
   };
   window.localStorage.setItem('floodwatch.v2', JSON.stringify([snap]));
@@ -542,7 +519,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok('min-level filter suppresses low severity post', window.__notifications.length === 0, 'n=' + window.__notifications.length);
 
   // จุดใหม่ที่ระดับรุนแรง แต่ไม่ได้ติดตามและไม่มีตำแหน่ง -> ไม่ต้องแจ้ง
-  const newSevere = { id: 'al2', lat: 13.8, lng: 100.5, level: 3, depth: 90, place: 'จุดใหม่รุนแรง', note: '', ts: now2, resolved: false, posts: [] };
+  const newSevere = { id: 'al2', lat: 14.5, lng: 99.4, level: 3, depth: 90, place: 'จุดใหม่รุนแรง', note: '', ts: now2, resolved: false, posts: [] };
   window.dispatchEvent(new window.StorageEvent('storage', {
     key: 'floodwatch.v2', newValue: JSON.stringify([snap, newSevere]), storageArea: window.localStorage
   }));
@@ -553,18 +530,20 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   Object.defineProperty(window.navigator, 'geolocation', {
     configurable: true,
     value: {
-      getCurrentPosition: ok2 => ok2({ coords: { latitude: 13.79, longitude: 100.5 } }),
-      watchPosition: ok2 => { ok2({ coords: { latitude: 13.79, longitude: 100.5 } }); return 1; },
+      getCurrentPosition: ok2 => ok2({ coords: { latitude: 14.305, longitude: 99.402 } }),
+      watchPosition: ok2 => { ok2({ coords: { latitude: 14.305, longitude: 99.402 } }); return 1; },
       clearWatch: function(){}
     }
   });
   click($('#btnLocate'));
   await wait(250);
   ok('location button enables alerts', JSON.parse(window.localStorage.getItem('floodwatch.settings.v1')).notifyOn === true);
+  console.log('DEBUG reports  =', JSON.stringify(JSON.parse(window.localStorage.getItem('floodwatch.v2')||'[]').map(r=>[r.id, r.lat, r.lng, r.resolved])));
+  console.log('DEBUG alertBox stamp =', $('#alertBox').dataset.stamp);
   ok('alert box shows nearby count after locating', $('#alertBox').textContent.includes('มีน้ำท่วม'), $('#alertBox').textContent.replace(/\s+/g,' ').slice(0,80));
 
   window.__notifications.length = 0;
-  const nearNew = { id: 'al3', lat: 13.795, lng: 100.502, level: 3, depth: 95, place: 'จุดใหม่ใกล้ฉัน', note: '', ts: now2, resolved: false, posts: [] };
+  const nearNew = { id: 'al3', lat: 14.312, lng: 99.404, level: 3, depth: 95, place: 'จุดใหม่ใกล้ฉัน', note: '', ts: now2, resolved: false, posts: [] };
   window.dispatchEvent(new window.StorageEvent('storage', {
     key: 'floodwatch.v2', newValue: JSON.stringify([snap, nearNew]), storageArea: window.localStorage
   }));

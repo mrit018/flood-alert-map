@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<!-- CSS ของ Leaflet ถูกโหลดตอนใช้ OpenStreetMap เท่านั้น (ดู loadLeaflet) -->
 <style>
 :root{
   --ink:#0e2a3b; --ink-2:#4a6272; --paper:#f6f8f7; --card:#ffffff; --line:#d6dfdd;
@@ -214,6 +214,16 @@ label.f small,.f>small{font-weight:400;color:var(--ink-2);display:block;margin-t
 .pop-btn.danger{color:#c7223a}
 .pin{filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
 .me{width:16px;height:16px;border-radius:50%;background:#1a73e8;border:3px solid #fff;box-shadow:0 0 0 2px rgba(26,115,232,.35)}
+.map-dead{display:grid;place-items:center;height:100%;text-align:center;color:#4a6272;padding:24px;background:#eef2f1}
+.map-dead small{display:block;margin-top:6px;font-size:12.5px}
+/* ป๊อปอัพของ Google Maps ให้เข้ากับธีมของแอป */
+.gm-style .gm-style-iw{padding:0!important;border-radius:12px!important;box-shadow:0 6px 22px rgba(0,0,0,.24)!important}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .gm-style .gm-style-iw{background:#16262f!important;color:#e6eef2!important}
+  :root:not([data-theme="light"]) .gm-style .gm-style-iw-c{background:#16262f!important}
+  :root:not([data-theme="light"]) .gm-style .gm-style-iw button.gm-style-iw-chr{filter:invert(1) hue-rotate(180deg)}
+  :root:not([data-theme="light"]) .pop-btn{background:#16262f;color:#e6eef2;border-color:#27404d}
+}
 
 @media (max-width:820px){
   #app{flex-direction:column-reverse}
@@ -412,6 +422,15 @@ label.f small,.f>small{font-weight:400;color:var(--ink-2);display:block;margin-t
       </label>
     </div>
     <div class="grp">
+      <h3>แผนที่</h3>
+      <label class="f">Google Maps API key
+        <input id="sGkey" type="password" autocomplete="off" spellcheck="false"
+               placeholder="AIza… (เว้นว่างไว้ = ใช้ OpenStreetMap)">
+        <small id="sGkeyHint">ใส่แล้วแผนที่จะเปลี่ยนเป็น Google Maps ทันที — key ถูกเก็บในเบราว์เซอร์เครื่องนี้เท่านั้น ไม่ได้ฝังในไฟล์</small>
+      </label>
+      <p class="sub" style="margin:0 0 12px" id="sMapStatus"></p>
+    </div>
+    <div class="grp">
       <h3>ข้อมูลในเบราว์เซอร์นี้</h3>
       <p class="sub" id="sStats" style="margin:0 0 10px"></p>
       <label class="chk"><input type="checkbox" id="sHidePhone"> ซ่อนเบอร์โทรในโพสตของฉัน (ส่งให้คนอื่นส่งข้อความแทน)</label>
@@ -423,7 +442,7 @@ label.f small,.f>small{font-weight:400;color:var(--ink-2);display:block;margin-t
   </form>
 </dialog>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+// Leaflet / Google Maps ถูกโหลดตอนใช้งานจริง ไม่ใช่ตอนเปิดหน้า (ดู loadLeaflet / loadGoogle)
 <script>
 (function(){
 'use strict';
@@ -440,6 +459,19 @@ const KEY        = 'floodwatch.v2';
 const KEY_SET    = 'floodwatch.settings.v1';
 const KEY_IDENT  = 'floodwatch.identity.v1';
 const MEDIA_DB   = 'floodwatch-media';
+
+/* ขอบเขตจังหวัดกาญจนบุรี (อ้างอิง OpenStreetMap relation 1908777)
+   แผนที่ล็อกไว้ในกรอบนี้ และรายงานที่อยู่นอกเขตจะถูกปฏิเสธ */
+const AREA = {
+  name:  'จังหวัดกาญจนบุรี',
+  north: 15.6607, south: 13.7261, east: 99.8793, west: 98.1817,
+  center: {lat: 14.6934, lng: 99.0305}
+};
+function inArea(lat, lng){
+  return isFinite(lat) && isFinite(lng)
+    && lat >= AREA.south && lat <= AREA.north
+    && lng >= AREA.west  && lng <= AREA.east;
+}
 const MAX_PHOTOS = 4;
 const MAX_SIDE   = 1400;   // ย่อรูปไม่ให้กว้าง/สูงเกินนี้ (px)
 const QUALITY   = 0.72;
@@ -478,6 +510,7 @@ const quickDraft = {text:''};  // ข้อความที่พิมพ์�
 
 const settings = {
   notifyOn:false, sound:true, minLevel:0,
+  googleKey:'', mapId:'',
   follow:[]
 };
 const profile = { name:'', phone:'', hidePhone:false };
@@ -776,6 +809,7 @@ function save(){ jsave(KEY, reports); }
 
 function sanitizeReport(r){
   if (!r || !isFinite(+r.lat) || !isFinite(+r.lng) || !LEVELS[+r.level]) return null;
+  if (!inArea(+r.lat, +r.lng)) return null;   // นอกเขตกาญจนบุรี = ไม่เก็บ
   const posts = (Array.isArray(r.posts) ? r.posts : []).map(p => {
     if (!p || typeof p !== 'object') return null;
     return {
@@ -810,46 +844,32 @@ function seed(){
     id:id, lat:lat, lng:lng, level:level, depth:depth, place:place, note:note,
     ts:now - minsAgo*m, resolved:false, posts:posts || []
   });
+  // ทุกจุดอยู่ในเขตจังหวัดกาญจนบุรี
   return [
-    mk('seed1',13.7123,100.5560,3,90,'ถนนพระราม 4 ใกล้คลองเตย','น้ำท่วมสูง รถเล็กผ่านไม่ได้',12,[
-      {id:'p1', text:'เช้านี้น้ำขึ้นถึงทางเท้า ลึกประมาณเซนติเมตร ชาวบ้านกำลังวางแผงไม้กั้น', photos:[], author:{name:'สมชาย', phone:'081-234-5678'}, ts:now-12*m},
-      {id:'p2', text:'อัปเดต: น้ำเพิ่มขึ้นอีก ถนนตัดขาด อย่าใช้เส้นทางนี้', photos:[], author:{name:'ประยา', phone:''}, ts:now-8*m}
+    mk('seed1',14.0075,99.5767,3,95,'สะพานข้ามแม่น้ำแคว ช่วงถนนทางหลวง 323','',35,[
+      {id:'p1', text:'เช้านี้น้ำท่วมถึงชั้นสองของร้านค้า ริมแควลึกประมาณเกือบเมตร ชาวบ้านกำลังวางแผงไม้กั้น', photos:[], author:{name:'สมชาย', phone:'081-234-5678'}, ts:now-35*m},
+      {id:'p2', text:'อัปเดต: น้ำเพิ่มขึ้นอีก ถนนเลี่ยงสะพานข้ามไม่ได้ อย่าใช้เส้นทางนี้', photos:[], author:{name:'ประยา', phone:''}, ts:now-25*m}
     ]),
-    mk('seed2',13.8039,100.6089,2,45,'ริมคลองแสนแสบ ลาดพร้าว','',55,[
-      {id:'p3', text:'น้ำลดลงเล็กน้อย ทางเข้าตลาดเปิดได้แล้ว แต่ยังเละวียง', photos:[], author:{name:'มะนาว', phone:'089-777-1122'}, ts:now-30*m}
+    mk('seed2',14.3292,99.2161,2,45,'ตลาดน้ำดำเนินนะดิ ทางเข้าตลาด','',95,[
+      {id:'p3', text:'ทางเข้าตลาดน้ำท่วมช่วงเช้า ท่าเรือบางส่วนใช้ไม่ได้', photos:[], author:{name:'มะนาว', phone:'089-777-1122'}, ts:now-60*m}
     ]),
-    mk('seed3',13.6870,100.6030,1,15,'ถนนสุขุมวิท ซอย 101','น้ำเริ่มท่วมขังริมทาง',140,[]),
-    mk('seed4',13.9100,100.4250,2,50,'บางบัวทอง นนทบุรี','',200,[]),
-    mk('seed5',13.9130,100.4980,3,100,'ปากเกร็ด นนทบุรี ริมแม่น้ำเจ้าพระยา','น้ำล้นตลิ่ง',30,[
-      {id:'p4', text:'ทางหลวงชนบทท่าเรือปิดน้ำ ขนส่งหยุดชั่วคราว', photos:[], author:{name:'ชาญชัย', phone:''}, ts:now-20*m}
+    mk('seed3',14.7556,98.9789,3,110,'ถ้ำพระรามทุ่ม ทางเข้าอุทยานแห่งชาติแก่งกระเบียร','',15,[
+      {id:'p4', text:'น้ำล้นทางเข้าถ้ำ ปิดทางลงชั้นล่าง มีการประกาศห้ามลง', photos:[], author:{name:'ชาญชัย', phone:'086-334-5566'}, ts:now-12*m}
     ]),
-    mk('seed6',13.7100,100.4080,1,20,'ถนนเพชรเกษม บางแค','',320,[])
+    mk('seed4',14.8903,99.0267,1,20,'สะพานแขวนหัวช้าง อำเภอศรีนครินทร์','',140,[]),
+    mk('seed5',14.0231,99.5391,2,55,'ถนนเจริญกรุง หน้าตลาดใหม่ เมืองกาญจนบุรี','',200,[]),
+    mk('seed6',13.9456,99.4167,1,15,'บ้านไผ่ ถนนทางหลวงชนบท เลขที่ 1234','',300,[]),
+    mk('seed7',14.3006,99.1858,1,25,'อำเภอไทรน้อย ถนนสุขุมวิท','',55,[]),
+    mk('seed8',14.1817,99.1306,2,40,'อำเภอสองพี่น้อง บ้านบางลาน','',400,[]),
+    mk('seed9',14.6636,98.9189,2,60,'อุทยานแห่งชาติไพร่ฟ้า-แก่งกระเบียร จุดชมวิว','',75,[]),
+    mk('seed10',13.7803,99.1836,1,18,'อำเภอพนมรุ้ง ถนนเพชรเกษม','',260,[])
   ];
 }
 
 /* ============================================================
-   แผนที่
+   แผนที่ — ใช้ Google Maps ถ้ามี API key ไม่มีก็ fallback เป็น OpenStreetMap
+   ทั้งสอง backend ต้องเปิดหน้าการใช้งานชุดเดียวกัน (ดู makeGoogleMap / makeOsmMap)
 ============================================================ */
-const map = L.map('map', {zoomControl:true}).setView([13.7563,100.5018], 11);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom:19,
-  attribution:'&copy; ผู้ร่วมจัดทำ <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
-}).addTo(map);
-
-const layer = L.layerGroup().addTo(map);
-const userLayer = L.layerGroup().addTo(map);
-const markers = {};
-
-function pinIcon(color, followed){
-  const ring = followed ? '<circle cx="14" cy="13" r="12.5" fill="none" stroke="#d99a00" stroke-width="2" opacity=".9"/>' : '';
-  return L.divIcon({
-    className:'',
-    html:'<svg class="pin" width="28" height="36" viewBox="0 0 28 36">'+ring
-      + '<path d="M14 35C14 35 2 21 2 13a12 12 0 0124 0c0 8-12 22-12 22z" fill="'+color+'" stroke="#fff" stroke-width="2"/>'
-      + '<circle cx="14" cy="13" r="4.5" fill="#fff"/></svg>',
-    iconSize:[28,36], iconAnchor:[14,35], popupAnchor:[0,-32]
-  });
-}
 function photosOf(r){ return (r.posts||[]).flatMap(p => p.photos || []); }
 function postCount(r){ return (r.posts||[]).length; }
 
@@ -872,22 +892,289 @@ function popupHtml(r){
       + (r.resolved ? '' : '<button class="pop-btn danger" data-act="resolve">น้ำลดแล้ว</button>')
     + '</div>';
 }
-function wirePopup(r, popup){
-  const el = popup.getElement();
+/* ผูกปุ่มใน popup — ใช้ร่วมกันทั้งสอง backend */
+function wirePopupEl(el, r, close){
   if (!el) return;
   hydrateImages(el);
   el.querySelectorAll('[data-photo]').forEach(img => {
-    img.onclick = () => openLightbox(photosOf(r), photosOf(r).indexOf(img.dataset.photo), r.place);
+    img.onclick = () => {
+      const ph = photosOf(r);
+      openLightbox(ph, ph.indexOf(img.dataset.photo), r.place);
+    };
   });
   el.querySelectorAll('[data-act]').forEach(b => {
     b.onclick = () => {
       const a = b.dataset.act;
-      if (a === 'open'){ openDetail(r.id); }
-      else if (a === 'follow'){ toggleFollow(r.id); popup.update && popup.update(); }
-      else if (a === 'resolve'){ resolveReport(r.id); map.closePopup(); }
+      if (a === 'open'){ close && close(); openDetail(r.id); }
+      else if (a === 'follow'){ toggleFollow(r.id); close && close(); }
+      else if (a === 'resolve'){ close && close(); resolveReport(r.id); }
     };
   });
 }
+function pinSvg(color, followed){
+  const ring = followed ? '<circle cx="14" cy="13" r="12.5" fill="none" stroke="#d99a00" stroke-width="2.4" opacity=".95"/>' : '';
+  return '<svg class="pin" width="28" height="36" viewBox="0 0 28 36" style="display:block;overflow:visible">'+ring
+    + '<path d="M14 35C14 35 2 21 2 13a12 12 0 0124 0c0 8-12 22-12 22z" fill="'+color+'" stroke="#fff" stroke-width="2"/>'
+    + '<circle cx="14" cy="13" r="4.5" fill="#fff"/></svg>';
+}
+
+function loadScript(src){
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.async = true;
+    s.onload = () => res();
+    s.onerror = () => rej(new Error('โหลดไฟล์สคริปต์ไม่สำเร็จ'));
+    document.head.appendChild(s);
+  });
+}
+function loadGoogle(key){
+  if (window.google && window.google.maps && window.google.maps.Map) return Promise.resolve();
+  if (!key) return Promise.reject(new Error('ยังไม่ได้ใส่ API key'));
+  return loadScript('https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(key)
+    + '&libraries=marker&v=weekly&loading=async&language=th&region=TH')
+    .then(() => {
+      if (!window.google || !window.google.maps || !window.google.maps.Map)
+        throw new Error('Google Maps ไม่ตอบสนอง (key ไม่ถูกต้องหรือ Billing ยังไม่เปิด?)');
+    });
+}
+function loadLeaflet(){
+  if (window.L) return Promise.resolve();          // มีอยู่แล้ว (เช่น โหลดไว้ก่อนหน้า) ไม่ต้องโหลดซ้ำ
+  if (!$('#leafletCss')){
+    const l = document.createElement('link');
+    l.id = 'leafletCss'; l.rel = 'stylesheet';
+    l.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+    document.head.appendChild(l);
+  }
+  return loadScript('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js')
+    .then(() => { if (!window.L) throw new Error('โหลด Leaflet ไม่สำเร็จ'); });
+}
+
+/* ---------- backend: Google Maps ---------- */
+function makeGoogleMap(el){
+  const gm = window.google.maps;
+  const adv = gm.marker && gm.marker.AdvancedMarkerElement;
+  let infoWin = null;
+  let reportLayers = [];
+  let userLayers = [];
+
+  const map = new gm.Map(el, {
+    center: {lat:AREA.center.lat, lng:AREA.center.lng},
+    zoom: 10,
+    mapTypeId: 'roadmap',
+    clickableIcons: false,
+    zoomControl: true,
+    streetViewControl: true,
+    fullscreenControl: false,
+    mapTypeControl: false,
+    restriction: {latLngBounds: {north:AREA.north, south:AREA.south, east:AREA.east, west:AREA.west}},
+    restrictionOptions: {strictBounds: true},
+    gestureHandling: 'greedy'
+  });
+  if (adv) map.mapId = settings.mapId || 'DEMO_MAP_ID';
+
+  const api = {
+    kind: 'google',
+    onPick(cb){
+      map.addListener('click', e => { if (e && e.latLng) cb({lat:e.latLng.lat(), lng:e.latLng.lng()}); });
+    },
+    flyTo(lat, lng, zoom){
+      map.panTo({lat, lng});
+      if (zoom) map.setZoom(zoom);
+    },
+    getZoom(){ return map.getZoom(); },
+    invalidateSize(){ gm.event.trigger(map, 'resize'); },
+    fit(points, pad){
+      if (!points || !points.length) return;
+      const q = pad || 40;
+      const b = new gm.LatLngBounds();
+      points.forEach(pt => b.extend({lat:pt.lat, lng:pt.lng}));
+      map.fitBounds(b, {top:q, right:q, bottom:q, left:q});
+    },
+    closePopup(){ if (infoWin){ infoWin.close(); infoWin = null; } },
+    drawReports(list){
+      reportLayers.forEach(l => { try{ l.setMap(null); }catch(e){} });
+      reportLayers = [];
+      list.forEach(r => {
+        const lv = LEVELS[r.level];
+        if (!r.resolved){
+          reportLayers.push(new gm.Circle({
+            map, center:{lat:r.lat, lng:r.lng}, radius: lv.radius,
+            strokeColor: lv.color, strokeWeight: 1.5, strokeOpacity:.9,
+            fillColor: lv.color, fillOpacity:.18, clickable:false, zIndex:1
+          }));
+        }
+        const isFollow = settings.follow.includes(r.id);
+        const holder = document.createElement('div');
+        holder.style.cssText = 'cursor:pointer;line-height:0';
+        holder.innerHTML = pinSvg(r.resolved ? '#7d8f99' : lv.color, isFollow);
+
+        let mk;
+        if (adv){
+          mk = new adv({map, position:{lat:r.lat, lng:r.lng}, content:holder, title:r.place, gmpClickable:true});
+          if (isFollow) mk.zIndex = 500;
+        }else{
+          // ทางเลือกสำรอง: Marker แบบคลาสสิก (ใช้ได้แม้ไม่ได้ตั้ง mapId)
+          mk = new gm.Marker({map, position:{lat:r.lat, lng:r.lng}, title:r.place});
+          mk.set('zIndex', isFollow ? 500 : 0);
+        }
+        reportLayers.push(mk);
+
+        const openInfo = () => {
+          if (infoWin) infoWin.close();
+          infoWin = new gm.InfoWindow({
+            content: popupHtml(r),
+            position:{lat:r.lat, lng:r.lng},
+            maxWidth:290
+          });
+          infoWin.open({map, anchor:mk});
+          // เนื้อหาเป็น string — ผูกปุ่มได้ทันทีที่ป๊อปอัพพร้อม
+          gm.event.addListenerOnce(infoWin, 'domready', () => {
+            const box = infoWin && infoWin.getContent();
+            if (box && box.nodeType === 1) wirePopupEl(box, r, () => api.closePopup());
+          });
+        };
+        if (adv) mk.addListener('click', openInfo);
+        else gm.event.addListener(mk, 'click', openInfo);
+      });
+    },
+    drawUser(pos, radiusM){
+      userLayers.forEach(l => { try{ l.setMap(null); }catch(e){} });
+      userLayers = [];
+      if (!pos) return;
+      const c = {lat:pos.lat, lng:pos.lng};
+      userLayers.push(new gm.Circle({
+        map, center:c, radius: radiusM,
+        strokeColor:'#1a73e8', strokeWeight:1.5, strokeOpacity:.9,
+        fillColor:'#1a73e8', fillOpacity:.05, clickable:false, zIndex:2
+      }));
+      userLayers.push(new gm.Circle({map, center:c, radius:14, strokeColor:'#1a73e8', strokeWidth:1, fillColor:'#ffffff', fillOpacity:1, clickable:false, zIndex:3}));
+      userLayers.push(new gm.Circle({map, center:c, radius:7, strokeColor:'#ffffff', strokeWidth:3, fillColor:'#1a73e8', fillOpacity:1, clickable:false, zIndex:4}));
+    }
+  };
+  return api;
+}
+
+/* ---------- backend: OpenStreetMap (สำรอง) ---------- */
+function makeOsmMap(el){
+  const map = L.map(el, {zoomControl:true})
+    .setView([AREA.center.lat, AREA.center.lng], 10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom:19,
+    attribution:'&copy; ผู้ร่วมจัดทำ <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>'
+  }).addTo(map);
+  map.setMaxBounds(L.latLngBounds([[AREA.south,AREA.west],[AREA.north,AREA.east]]), {maxBoundsViscosity:1});
+
+  const layer = L.layerGroup().addTo(map);
+  const userLayer = L.layerGroup().addTo(map);
+  const pins = {};
+  let pop = null;
+
+  return {
+    kind: 'osm',
+    onPick(cb){
+      map.on('click', e => { if (picking) cb({lat:e.latlng.lat, lng:e.latlng.lng}); });
+    },
+    flyTo(lat, lng, zoom){ map.flyTo([lat, lng], zoom || map.getZoom(), {duration:.7}); },
+    getZoom(){ return map.getZoom(); },
+    invalidateSize(){ map.invalidateSize(); },
+    fit(points, pad){
+      if (!points || !points.length) return;
+      map.fitBounds(L.latLngBounds(points.map(p => [p.lat, p.lng])).pad(0.15),
+        {padding:[pad||40, pad||40]});
+    },
+    closePopup(){ map.closePopup(); if (pop){ pop.remove(); pop = null; } },
+    drawReports(list){
+      layer.clearLayers();
+      Object.keys(pins).forEach(k => delete pins[k]);
+      list.forEach(r => {
+        const lv = LEVELS[r.level];
+        if (!r.resolved){
+          L.circle([r.lat,r.lng], {radius:lv.radius, color:lv.color, weight:1.5, fillColor:lv.color, fillOpacity:.18, interactive:false}).addTo(layer);
+        }
+        const isFollow = settings.follow.includes(r.id);
+        const mk = L.marker([r.lat,r.lng], {
+          icon: L.divIcon({
+            className:'', html: pinSvg(r.resolved ? '#7d8f99' : lv.color, isFollow),
+            iconSize:[28,36], iconAnchor:[14,35], popupAnchor:[0,-32]
+          }),
+          title: r.place, keyboard:true, zIndexOffset: isFollow ? 500 : 0,
+          bubblingMouseEvents:false
+        }).addTo(layer);
+        mk.bindPopup(() => popupHtml(r));
+        mk.on('popupopen', e => wirePopupEl(e.popup.getElement(), r, () => map.closePopup()));
+        pins[r.id] = mk;
+      });
+    },
+    drawUser(pos, radiusM){
+      userLayer.clearLayers();
+      if (!pos) return;
+      L.marker([pos.lat,pos.lng], {
+        icon: L.divIcon({className:'', html:'<div class="me"></div>', iconSize:[16,16], iconAnchor:[8,8]}),
+        interactive:false
+      }).addTo(userLayer);
+      L.circle([pos.lat,pos.lng], {
+        radius:radiusM, color:'#1a73e8', weight:1.5, dashArray:'6 6', fillOpacity:.05, interactive:false
+      }).addTo(userLayer);
+    }
+  };
+}
+
+/* ---------- ตัวเลือกแผนที่ + สลับอัตโนมัติ ---------- */
+let mapApi = null;
+let mapKind = 'none';
+let mapBooting = null;
+
+function wantGoogle(){ return String(settings.googleKey || '').trim().length > 0; }
+
+function initMap(){
+  if (mapBooting) return mapBooting;
+  const el = $('#map');
+  el.innerHTML = '';
+  mapApi = null;
+  mapKind = 'none';
+
+  mapBooting = (async () => {
+    if (wantGoogle()){
+      try{
+        await loadGoogle(settings.googleKey.trim());
+        mapApi = makeGoogleMap(el);
+        mapKind = 'google';
+      }catch(err){
+        console.warn('เปิด Google Maps ไม่สำเร็จ ใช้ OpenStreetMap แทน:', err);
+        mapGoogleError = err.message || String(err);
+        mapApi = null;
+      }
+    }
+    if (!mapApi){
+      try{
+        await loadLeaflet();
+        mapApi = makeOsmMap(el);
+        mapKind = 'osm';
+      }catch(err){
+        mapApiError = err.message || String(err);
+        toast('เปิดแผนที่ไม่ได้', mapApiError);
+        el.innerHTML = '<div class="map-dead">เปิดแผนที่ไม่สำเร็จ<br><small>'+esc(mapApiError)+'</small></div>';
+      }
+    }
+    if (mapApi){
+      mapApi.onPick(pos => {
+        if (!picking) return;
+        if (!inArea(pos.lat, pos.lng)){ toast('อยู่นอกเขต'+AREA.name, 'รายงานได้เฉพาะในจังหวัด'+AREA.name+'เท่านั้น'); return; }
+        stopPick();
+        openReportForm(pos);
+      });
+      renderMap();
+      renderUser();
+      const pts = active();
+      if (pts.length) mapApi.fit(pts.map(r => ({lat:r.lat, lng:r.lng})), 56);
+      else mapApi.flyTo(AREA.center.lat, AREA.center.lng, 10);
+    }
+    renderAlertsUI();
+  })();
+  return mapBooting;
+}
+let mapGoogleError = null;
+let mapApiError = null;
 
 function active(){ return reports.filter(r => !r.resolved); }
 function visible(){
@@ -901,23 +1188,8 @@ function allPosts(){
 const byId = id => reports.find(r => r.id === id);
 
 function renderMap(){
-  layer.clearLayers();
-  Object.keys(markers).forEach(k => delete markers[k]);
-  visible().forEach(r => {
-    const lv = LEVELS[r.level];
-    if (!r.resolved){
-      L.circle([r.lat,r.lng], {radius:lv.radius, color:lv.color, weight:1.5, fillColor:lv.color, fillOpacity:.18, interactive:false}).addTo(layer);
-    }
-    const isFollow = settings.follow.includes(r.id);
-    const mk = L.marker([r.lat,r.lng], {
-      icon: pinIcon(r.resolved ? '#7d8f99' : lv.color, isFollow),
-      title: r.place, keyboard:true, zIndexOffset: isFollow ? 500 : 0,
-      bubblingMouseEvents:false
-    }).addTo(layer);
-    mk.bindPopup(() => popupHtml(r));
-    mk.on('popupopen', e => wirePopup(r, e.popup));
-    markers[r.id] = mk;
-  });
+  if (!mapApi) return;
+  mapApi.drawReports(visible());
 }
 
 function renderChips(){
@@ -1256,15 +1528,8 @@ function renderAlert(){
 }
 
 function renderUser(){
-  userLayer.clearLayers();
-  if (!userPos) return;
-  L.marker([userPos.lat,userPos.lng], {
-    icon: L.divIcon({className:'', html:'<div class="me"></div>', iconSize:[16,16], iconAnchor:[8,8]}),
-    interactive:false
-  }).addTo(userLayer);
-  L.circle([userPos.lat,userPos.lng], {
-    radius:radiusKm*1000, color:'#1a73e8', weight:1.5, dashArray:'6 6', fillOpacity:.04, interactive:false
-  }).addTo(userLayer);
+  if (!mapApi) return;
+  mapApi.drawUser(userPos, radiusKm * 1000);
 }
 
 function renderTabs(){
@@ -1430,7 +1695,7 @@ function openDetail(id){
   if (changed) resetComposer();   // เปลี่ยนจุด = ทิ้งรูปและข้อความที่ค้างจากจุดเดิม
   render();
   const r = byId(id);
-  if (r) map.flyTo([r.lat, r.lng], Math.max(map.getZoom(), 15), {duration:.7});
+  if (r && mapApi) mapApi.flyTo(r.lat, r.lng, Math.max(mapApi.getZoom(), 15));
 }
 function toggleFollow(id){
   const r = byId(id); if (!r) return;
@@ -1446,9 +1711,7 @@ function toggleFollow(id){
     }
   }
   jsave(KEY_SET, Object.assign({}, settings, {radiusKm:radiusKm}));
-  render();
-  const mk = markers[id];
-  if (mk) mk.setIcon(pinIcon(r.resolved ? '#7d8f99' : LEVELS[r.level].color, settings.follow.includes(id)));
+  render();   // render() วาดหมุดใหม่อยู่แล้ว รวมวงแหวนติดตามที่เปลี่ยนไป
 }
 function resolveReport(id){
   const r = byId(id); if (!r) return;
@@ -1505,6 +1768,10 @@ function fillAuthor(prefix){
   $('#'+prefix+'Phone').value = profile.phone;
 }
 function openReportForm(pos){
+  if (!inArea(pos.lat, pos.lng)){
+    toast('อยู่นอกเขต'+AREA.name, 'รายงานได้เฉพาะในจังหวัด'+AREA.name+'เท่านั้น');
+    return;
+  }
   pendingPos = pos;
   $('#dlgPos').textContent = 'พิกัด ' + pos.lat.toFixed(5) + ', ' + pos.lng.toFixed(5);
   $('#frmReport').reset();
@@ -1536,6 +1803,10 @@ function checkPhone(sel, label){
 $('#frmReport').addEventListener('submit', async e => {
   e.preventDefault();
   if (!pendingPos) return;
+  if (!inArea(pendingPos.lat, pendingPos.lng)){
+    toast('พิกัดอยู่นอกเขต'+AREA.name, 'รายงานได้เฉพาะในจังหวัด'+AREA.name+'เท่านั้น');
+    return;
+  }
   if (!checkPhone('#rPhone','เบอร์โทร')) return;
   const btn = $('#rSubmit');
   btn.disabled = true;
@@ -1562,9 +1833,8 @@ $('#frmReport').addEventListener('submit', async e => {
     $('#dlgReport').close();
     pendingPos = null;
     render();
-    map.flyTo([r.lat, r.lng], Math.max(map.getZoom(), 14), {duration:.8});
-    openDetail(r.id);
-    toast('ส่งรายงานแล้ว', r.place + (photos.length ? ' พร้อม ' + photos.length + ' รูป' : ''));
+    if (mapApi) mapApi.flyTo(r.lat, r.lng, Math.max(mapApi.getZoom(), 14));
+    openDetail(r.id);    toast('ส่งรายงานแล้ว', r.place + (photos.length ? ' พร้อม ' + photos.length + ' รูป' : ''));
   }catch(err){
     pruneOrphans();
     toast('ส่งรายงานไม่สำเร็จ', err.message || 'ลองใหม่อีกครั้ง');
@@ -1651,12 +1921,8 @@ document.addEventListener('keydown', e => {
 
 /* ============================================================
    แผนที่ + ตำแหน่ง
+   การคลิกบนแผนที่ถูกผูกไว้ใน initMap() (แยกตาม backend)
 ============================================================ */
-map.on('click', e => {
-  if (!picking) return;
-  stopPick();
-  openReportForm({lat:e.latlng.lat, lng:e.latlng.lng});
-});
 $('#btnReport').onclick = startPick;
 $('#btnCancelPick').onclick = stopPick;
 $('#btnUseMe').onclick = () => {
@@ -1677,11 +1943,21 @@ $('#btnLocate').onclick = () => {
   // ไม่วาดทั้งหน้าทุกครั้งที่ GPS ส่งค่า — จะทำให้ร่างที่พิมพ์ไว้หาย และแมปสั่นทุกตำแหน่ง
   // วาดเฉพาะส่วนที่ผูกกับตำแหน่งเท่านั้น ที่เหลือปล่อยให้ render() ตามรอบปกติ
   const onPos = p => {
+    const lat = p.coords.latitude, lng = p.coords.longitude;
+    const here = inArea(lat, lng);
+    if (!here && !userPos){        // อยู่นอกเขต: บอกเข้าใจว่าทำไมถึงไม่มีอะไรเตือน
+      settings.notifyOn = false;
+      jsave(KEY_SET, Object.assign({}, settings, {radiusKm:radiusKm}));
+      renderAlertsUI(); render();
+      toast('คุณอยู่นอกเขต'+AREA.name,
+            'ระบบนี้ดูแลเฉพาะจังหวัด'+AREA.name+' — เปิดการแจ้งเตือนใกล้ฉันไม่ได้ จนกว่าจะเข้าเขต');
+      return;
+    }
     const first = !userPos;
-    userPos = {lat:p.coords.latitude, lng:p.coords.longitude};
+    userPos = {lat, lng};
     renderAlertsUI(); renderAlert(); renderUser(); renderList(); renderMap();
     if (first){
-      map.flyTo([userPos.lat,userPos.lng], 13, {duration:.8});
+      if (mapApi) mapApi.flyTo(userPos.lat, userPos.lng, 13);
       toast('เปิดการแจ้งเตือนแล้ว','จะเตือนเมื่อมีโพสตใหม่ในรัศมี '+radiusKm+' กม. หรือในจุดที่คุณติดตาม');
     }
   };
@@ -1735,6 +2011,15 @@ $('#btnSettings').onclick = async () => {
   $('#sSound').checked = settings.sound;
   $('#sMin').value = String(settings.minLevel);
   $('#sHidePhone').checked = profile.hidePhone;
+  $('#sGkey').value = settings.googleKey || '';
+  const st2 = mapKind === 'google' ? 'กำลังใช้ Google Maps'
+            : mapApiError ? 'เปิดแผนที่ไม่สำเร็จ: ' + mapApiError
+            : mapGoogleError ? 'Google Maps ใช้ไม่ได้ (' + mapGoogleError + ') — ใช้ OpenStreetMap แทน'
+            : 'กำลังใช้ OpenStreetMap (ใส่ key เพื่อเปลี่ยนเป็น Google Maps)';
+  $('#sMapStatus').textContent = st2;
+  $('#sGkeyHint').textContent = settings.googleKey
+    ? 'บันทึก key ไว้แล้ว — กด “บันทึก” เพื่อนำออกใช้หรือเปลี่ยน key'
+    : 'ใส่แล้วแผนที่จะเปลี่ยนเป็น Google Maps ทันที — key ถูกเก็บในเบราว์เซอร์เครื่องนี้เท่านั้น ไม่ได้ฝังในไฟล์';
   $('#sPhoneHint').textContent = profile.hidePhone
     ? 'เบอร์ของคุณจะไม่แสดงในโพสต (ระบบจะบอกคนอื่นให้ส่งข้อความแทน)'
     : 'จะแสดงเป็นลิงก์โทรในโพสตของคุณ';
@@ -1762,11 +2047,19 @@ $('#frmSet').addEventListener('submit', e => {
   settings.notifyOn = $('#sNotify').checked;
   settings.sound = $('#sSound').checked;
   settings.minLevel = +$('#sMin').value;
+  const newKey = $('#sGkey').value.trim();
+  const keyChanged = newKey !== String(settings.googleKey || '').trim();
+  settings.googleKey = newKey;
   jsave(KEY_IDENT, profile);
   jsave(KEY_SET, Object.assign({}, settings, {radiusKm:radiusKm}));
   $('#dlgSet').close();
   render();
   toast('บันทึกการตั้งค่าแล้ว', profile.name ? 'โพสตต่อไปจะแสดงชื่อ “' + profile.name + '”' : 'ยังไม่ได้ตั้งชื่อ');
+  if (keyChanged){
+    mapGoogleError = null; mapApiError = null;
+    toast('กำลังเปลี่ยนแผนที่…', newKey ? 'เปิด Google Maps' : 'กลับไปใช้ OpenStreetMap');
+    initMap();
+  }
 });
 
 /* ============================================================
@@ -1907,6 +2200,8 @@ setInterval(() => { if (view === 'spots' || view === 'feed') render(); }, 60000)
     settings.notifyOn = !!st.notifyOn;
     settings.sound = st.sound !== false;
     settings.minLevel = clamp(+st.minLevel || 0, 0, 3);
+    settings.googleKey = String(st.googleKey || '').trim();
+    settings.mapId = String(st.mapId || '').trim();
     settings.follow = Array.isArray(st.follow) ? st.follow.filter(String).slice(0, 300) : [];
     radiusKm = clamp(+st.radiusKm || 5, 1, 30);
   }
@@ -1921,10 +2216,8 @@ setInterval(() => { if (view === 'spots' || view === 'feed') render(); }, 60000)
   reports.forEach(r => fromStorage.add(r.id));
 
   render();
-  if (reports.length && active().length){
-    map.fitBounds(L.latLngBounds(active().map(r => [r.lat,r.lng])).pad(.25));
-  }
-  window.addEventListener('resize', () => map.invalidateSize());
+  initMap();
+  window.addEventListener('resize', () => { if (mapApi) mapApi.invalidateSize(); });
 })();
 })();
 </script>
