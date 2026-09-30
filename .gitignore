@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# ไฟล์ส่งออก/นำเข้าของแอป (มีรูปฝัง base64 จึงไฟล์ใหญ่)
+flood-reports-*.json
+*.json.bak
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+*~
+Thumbs.db
+
+# Node (ถ้าใครเอาไปรันเครื่องมือ)
+node_modules/
+npm-debug.log*

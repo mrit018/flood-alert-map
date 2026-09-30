@@ -1,0 +1,23 @@
+{
+  "name": "flood-alert-map",
+  "version": "1.0.0",
+  "description": "แผนที่แจ้งเตือนน้ำท่วมบนถนน — รายงานจุด ส่งรูปและข้อความอัปเดต พร้อมระบบแจ้งเตือน",
+  "private": true,
+  "scripts": {
+    "test": "node test-flood.js && node test-regress.js",
+    "serve": "python3 -m http.server 8000"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "^6.0.0",
+    "jsdom": "^24.0.0"
+  },
+  "keywords": [
+    "flood",
+    "map",
+    "leaflet",
+    "alert",
+    "notification",
+    "thai"
+  ],
+  "license": "MIT"
+}
