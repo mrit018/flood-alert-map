@@ -38,6 +38,10 @@ jobs:
 
       - name: ตั้งค่า Pages
         uses: actions/configure-pages@v5
+        with:
+          # ถ้า repo ยังไม่เคยเปิด Pages ให้ action เปิดให้เองแบบ build_type=workflow
+          # (ถ้าเปิดไว้แล้ว ค่านี้ไม่มีผล — ปลอดภัย)
+          enablement: true
 
       - name: อัปโหลดไฟล์เว็บไปยัง artifact
         uses: actions/upload-pages-artifact@v3
