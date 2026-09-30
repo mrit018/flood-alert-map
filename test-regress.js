@@ -74,7 +74,7 @@ const R = (id, posts) => ({id, lat:14.3, lng:99.4, level:2, depth:20, place:'จ
   const P1='pa1', P2='pa2', P3='pa3';
   const blob = () => new w.Blob([Buffer.from('89504e470d0a1a0a','hex')],{type:'image/png'});
   await new Promise(res => {
-    const rq = w.indexedDB.open('floodwatch-media',1);
+    const rq = w.indexedDB.open('floodwatch-media',2);
     rq.onupgradeneeded = () => { const d=rq.result; if(!d.objectStoreNames.contains('photos')) d.createObjectStore('photos',{keyPath:'id'}); };
     rq.onsuccess = () => { const t=rq.result.transaction('photos','readwrite'); const s=t.objectStore('photos');
       [P1,P2,P3].forEach(id => s.put({id, blob:blob(), w:1, h:1, ts:now}));
@@ -147,7 +147,7 @@ const R = (id, posts) => ({id, lat:14.3, lng:99.4, level:2, depth:20, place:'จ
   await wait(500);
   ok('B4: post removed from data', !stored().flatMap(r=>r.posts).some(p=>p.id==='q1'));
   ok('B4: object URLs revoked on delete', w.__revoked.length > revokedBefore, 'revoked='+(w.__revoked.length-revokedBefore));
-  const stillThere = await new Promise(res => { const rq=w.indexedDB.open('floodwatch-media',1); rq.onsuccess=()=>{ const g=rq.result.transaction('photos','readonly').objectStore('photos').get(P1); g.onsuccess=()=>res(!!g.result); }; });
+  const stillThere = await new Promise(res => { const rq=w.indexedDB.open('floodwatch-media',2); rq.onsuccess=()=>{ const g=rq.result.transaction('photos','readonly').objectStore('photos').get(P1); g.onsuccess=()=>res(!!g.result); }; });
   ok('B4: blob removed from IndexedDB', stillThere === false);
 
   // ================= BUG 5: ข้ามการวาด alertBox ซ้ำเมื่อสถานะเดิม =================
@@ -243,7 +243,7 @@ const R = (id, posts) => ({id, lat:14.3, lng:99.4, level:2, depth:20, place:'จ
   // ================= BUG 11: lightbox ต้องไม่แสดงรูปผิดเมื่อกดเปลี่ยนเร็ว ๆ =================
   // ใช้รูปที่ยังอยู่ในคลัง (P2 ถูกลบไปแล้วตอนทดสอบ B4) -> ใส่รูปใหม่ก่อน
   await new Promise(res => {
-    const rq = w.indexedDB.open('floodwatch-media',1);
+    const rq = w.indexedDB.open('floodwatch-media',2);
     rq.onsuccess = () => { const t=rq.result.transaction('photos','readwrite'); const s=t.objectStore('photos');
       [P1,P2,P3].forEach(id => s.put({id, blob:blob(), w:1, h:1, ts:now}));
       t.oncomplete=res; t.onerror=()=>res(); };
@@ -271,7 +271,7 @@ const R = (id, posts) => ({id, lat:14.3, lng:99.4, level:2, depth:20, place:'จ
 
   // ================= BUG 12: รูปค้างที่ยังไม่โพสต ต้องไม่ถูก prune ทิ้ง =================
   // ใช้ quickPending จริง: stub ให้ quickPickFile เขียนแล้วลบโพสตอื่น
-  const alive = await new Promise(res => { const rq=w.indexedDB.open('floodwatch-media',1); rq.onsuccess=()=>{ const g=rq.result.transaction('photos','readonly').objectStore('photos').get(P3); g.onsuccess=()=>res(!!g.result); }; });
+  const alive = await new Promise(res => { const rq=w.indexedDB.open('floodwatch-media',2); rq.onsuccess=()=>{ const g=rq.result.transaction('photos','readonly').objectStore('photos').get(P3); g.onsuccess=()=>res(!!g.result); }; });
   ok('B12: P3 still in store after deletes', alive === true);
   ok('B12: P3 not deleted by prune while referenced', alive === true);
 

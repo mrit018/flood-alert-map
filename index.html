@@ -159,6 +159,42 @@ button{cursor:pointer}
 @media (prefers-reduced-motion:reduce){.toast{animation:none}}
 
 /* lightbox */
+.tgl{display:flex;align-items:center;gap:5px;font-size:13px;color:var(--ink-2);cursor:pointer;user-select:none}
+.tgl input{width:16px;height:16px;accent-color:var(--water)}
+
+/* ===== สถานะ refer / ถนน ===== */
+.sumcard{margin:12px 20px 0;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+.sumcard .t{font-weight:500;font-size:14px;margin-bottom:5px}
+.sumcard .m{font-size:12.5px;color:var(--ink-2)}
+.sdots{display:flex;gap:12px;flex-wrap:wrap;margin-top:7px}
+.sdot{display:flex;align-items:center;gap:5px;font-size:12.5px;font-variant-numeric:tabular-nums}
+.sdot i{width:11px;height:11px;border-radius:50%;flex:none;box-shadow:0 0 0 1px rgba(0,0,0,.12) inset}
+
+.rbar{display:flex;gap:8px;padding:10px 20px 0;flex-wrap:wrap}
+.search{width:calc(100% - 40px);margin:10px 20px 0;padding:8px 11px;border:1px solid var(--line);
+        border-radius:8px;background:var(--card);color:var(--ink);font:inherit;font-size:14px}
+.elist{margin:0;padding:0 20px 14px;list-style:none}
+.elist > li{border-bottom:1px solid var(--line);padding:11px 0;display:flex;gap:10px;align-items:flex-start}
+.elist .lvl{width:11px;height:11px;border-radius:50%;flex:none;margin-top:5px;
+            box-shadow:0 0 0 1px rgba(0,0,0,.12) inset}
+.elist .em{flex:1;min-width:0;cursor:pointer}
+.elist .em:hover .nm{text-decoration:underline}
+.elist .nm{font-weight:500}
+.elist .sub{font-size:12.5px;color:var(--ink-2)}
+.elist .note{font-size:13px;margin-top:3px}
+.elist .tl{display:flex;gap:8px;align-items:center;margin-top:5px;flex-wrap:wrap}
+.tag{border:1px solid var(--line);border-radius:999px;padding:1px 8px;font-size:11.5px;color:var(--ink-2)}
+.tag.amb{border-color:var(--lv1);color:var(--lv1)}
+.elist .go{border:1px solid var(--line);background:var(--card);border-radius:7px;padding:3px 9px;font-size:12.5px;flex:none}
+.elist .go:hover{border-color:var(--water);color:var(--water)}
+.elist .empty{cursor:default;color:var(--ink-2);padding:16px 0}
+
+/* ประวัติการเปลี่ยนสถานะ */
+.tl-item{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.tl-item .lvl{width:11px;height:11px;border-radius:50%;flex:none;margin-top:5px;
+              box-shadow:0 0 0 1px rgba(0,0,0,.12) inset}
+.tl-item .when{font-size:12px;color:var(--ink-2)}
+
 #lightbox{position:absolute;inset:0;z-index:900;background:rgba(6,14,19,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px}
 #lightbox.on{display:flex}
 #lightbox img{max-width:100%;max-height:78%;object-fit:contain;border-radius:6px;background:#000}
@@ -270,11 +306,15 @@ label.f small,.f>small{font-weight:400;color:var(--ink-2);display:block;margin-t
         <option value="2">ตั้งแต่ท่วมขังขึ้นไป</option>
         <option value="3">เฉพาะรุนแรง</option>
       </select>
+      <label class="tgl"><input type="checkbox" id="lyHosp"> โรงพยาบาล</label>
+      <label class="tgl"><input type="checkbox" id="lyRoads"> ถนน</label>
     </div>
 
     <div class="tabs" role="tablist">
       <button class="tab" role="tab" id="tabSpots" aria-controls="paneSpots" aria-selected="true">จุดน้ำท่วม <span class="n" id="nSpots">0</span></button>
       <button class="tab" role="tab" id="tabFeed" aria-controls="paneFeed" aria-selected="false">ฟีดอัปเดต <span class="n" id="nFeed">0</span></button>
+      <button class="tab" role="tab" id="tabRefer" aria-controls="paneRefer" aria-selected="false">สถานะ refer <span class="n" id="nRefer">0</span></button>
+      <button class="tab" role="tab" id="tabRoads" aria-controls="paneRoads" aria-selected="false">ถนน &amp; เส้นทาง <span class="n" id="nRoads">0</span></button>
     </div>
 
     <section class="pane" id="paneSpots" role="tabpanel" aria-labelledby="tabSpots">
@@ -288,6 +328,24 @@ label.f small,.f>small{font-weight:400;color:var(--ink-2);display:block;margin-t
 
     <section class="pane" id="paneSpot" role="tabpanel" hidden>
       <div class="detail" id="detail"></div>
+    </section>
+
+    <section class="pane" id="paneRefer" role="tabpanel" aria-labelledby="tabRefer" hidden>
+      <div id="referBox"></div>
+      <div class="chips" id="referChips" role="group" aria-label="กรองสถานะ refer"></div>
+      <ul class="elist" id="referList"></ul>
+    </section>
+
+    <section class="pane" id="paneRoads" role="tabpanel" aria-labelledby="tabRoads" hidden>
+      <div id="roadBox"></div>
+      <div id="routeOut"></div>
+      <div class="rbar">
+        <button class="btn sm primary" id="btnRoute">หาเส้นทาง</button>
+        <button class="btn sm" id="btnRoadReload">โหลด/รีเฟรชข้อมูลถนน</button>
+      </div>
+      <div class="chips" id="roadChips" role="group" aria-label="กรองสถานะถนน"></div>
+      <input class="search" id="roadSearch" type="search" placeholder="ค้นหาเลขทางหลวง เช่น 323 หรือ ไทรโยค" autocomplete="off">
+      <ul class="elist" id="roadList"></ul>
     </section>
 
     <div class="foot">
@@ -396,6 +454,13 @@ label.f small,.f>small{font-weight:400;color:var(--ink-2);display:block;margin-t
     </div>
   </form>
 </dialog>
+
+<dialog id="dlgHosp"></dialog>
+<dialog id="dlgRoad"></dialog>
+<dialog id="dlgRoute"></dialog>
+<dialog id="dlgHospRoute"></dialog>
+<dialog id="dlgHospManage"></dialog>
+<dialog id="dlgHospEdit"></dialog>
 
 <!-- ============ ตั้งค่า ============ -->
 <dialog id="dlgSet">
@@ -511,9 +576,125 @@ const quickDraft = {text:''};  // ข้อความที่พิมพ์�
 const settings = {
   notifyOn:false, sound:true, minLevel:0,
   googleKey:'', mapId:'',
-  follow:[]
+  follow:[],
+  followHosp:[]
 };
 const profile = { name:'', phone:'', hidePhone:false };
+
+/* สถานะ refer โรงพยาบาล + สถานะถนน เก็บแยกจากรายงานน้ำท่วม */
+const KEY_OPS = 'floodwatch.ops.v1';
+let hospitalEdits = {};    // ปรับชื่อ/พิกัดเองได้ เก็บทับค่า seed
+let hospitalAdded = [];    // เพิ่มสถานพยาบาลเอง
+let hospitalRemoved = [];  // ซ่อนแห่งที่ไม่ต้องการ
+let opsStatus = {};        // { hospitalId: {status, note, incident, updatedAt, by} }
+let opsRoadStatus = {};    // { wayKey:   {status, reason, note, updatedAt, by} }
+let opsHistory = [];       // ไทม์ไลน์รวมโรงพยาบาล + ถนน
+let referFilter = 0;       // 0 ทั้งหมด | 3 ติดขัด | 2 ระวัง | 1 ปกติ | 9 ไม่มีข้อมูล
+let roadFilter = 0;
+let roadQuery = '';
+
+const OPS_LEVELS = {
+  1:{label:'ผ่านได้ปกติ',   short:'ปกติ',  color:'#2f9e5e'},
+  2:{label:'ผ่านได้แต่ระวัง', short:'ระวัง',  color:'#d99a00'},
+  3:{label:'ติดขัด ส่งต่อไม่ได้', short:'ติดขัด', color:'#c7223a'},
+  0:{label:'ยังไม่มีข้อมูล', short:'ไม่มีข้อมูล', color:'#94a3a8'}
+};
+const INCIDENTS = ['อุทกภัย','วาตภัย','ดินโคลนถล่ม','สถานการณ์อื่น'];
+
+/* ============================================================
+   โรงพยาบาลในเขตกาญจนบุรี
+   approx=true = พิกัดยังเป็นระดับอำเภอ (OSM ไม่มีพิกัดโรงพยาบาลราชการแห่งนี้)
+   แก้ตำแหน่งเองได้จากปุ่ม "ย้ายหมุด" แล้วจะบันทึกทับค่า seed
+============================================================ */
+const HOSPITAL_SEED = [
+  {id:'h01', name:'โรงพยาบาลพหลวงพยุหเสนา', short:'รพ.พหลฯ', amphur:'เมืองกาญจนบุรี', lat:14.0519, lng:99.4479, approx:true},
+  {id:'h02', name:'โรงพยาบาลมะการักษ์', short:'รพ.มะการักษ์', amphur:'เมืองกาญจนบุรี', lat:13.9081, lng:99.7676, phone:'034-591-925'},
+  {id:'h03', name:'โรงพยาบาลเจ้าคุณไพบูลย์พนมทวน', short:'รพ.เจ้าคุณไพบูลย์ฯ', amphur:'พนมทวน', lat:14.1480, lng:99.6768, approx:true},
+  {id:'h04', name:'โรงพยาบาลด่านมะขามเตี้ย', short:'รพ.ด่านมะขามเตี้ย', amphur:'ด่านมะขามเตี้ย', lat:13.8530, lng:99.4092, phone:'034-642-102'},
+  {id:'h05', name:'โรงพยาบาลทองผาภูมิ', short:'รพ.ทองผาภูมิ', amphur:'ทองผาภูมิ', lat:14.8591, lng:98.4405, approx:true, phone:'034-599-602'},
+  {id:'h06', name:'โรงพยาบาลท่ากระดาน', short:'รพ.ท่ากระดาน', amphur:'ศรีสวัสดิ์ (ต.ท่ากระดาน)', lat:14.4427, lng:99.1296},
+  {id:'h07', name:'โรงพยาบาลไทรโยค', short:'รพ.ไทรโยค', amphur:'ไทรโยค', lat:14.1157, lng:99.1445, approx:true, phone:'034-591-034'},
+  {id:'h08', name:'โรงพยาบาลบ่อพลอย', short:'รพ.บ่อพลอย', amphur:'บ่อพลอย', lat:14.3823, lng:99.4431, approx:true},
+  {id:'h09', name:'โรงพยาบาลสถานพระบารมี', short:'รพช.สถานพระบารมี', amphur:'หนองปรือ (ต.สมเด็จเจริญ)', lat:14.6855, lng:99.4401, approx:true},
+  {id:'h10', name:'โรงพยาบาลเลาขวัญ', short:'รพช.เลาขวัญ', amphur:'เลาขวัญ', lat:14.5843, lng:99.7701},
+  {id:'h11', name:'โรงพยาบาลสังขละบุรี', short:'รพช.สังขละบุรี', amphur:'สังขละบุรี', lat:15.2570, lng:98.6269, approx:true},
+  {id:'h12', name:'โรงพยาบาลสมเด็จพระปิยะมหาราช', short:'รพช.สมเด็จพระปิยะฯ', amphur:'ไทรโยค (ต.ไทรโยค)', lat:14.1157, lng:99.1445, approx:true},
+  {id:'h13', name:'โรงพยาบาลศุกร์ศิริศรีสวัสดิ์', short:'รพช.ศุกร์ศิริฯ', amphur:'ศรีสวัสดิ์ (ต.ด่านแม่แฉลบ)', lat:14.5955, lng:99.1136},
+  {id:'h14', name:'โรงพยาบาลห้วยกระเจา', short:'รพ.ห้วยกระเจา', amphur:'ไทรโยค (ต.ห้วยกระเจา)', lat:14.1157, lng:99.1445, approx:true},
+  {id:'h15', name:'โรงพยาบาลท่าม่วง (โรงพยาบาลสมเด็จพระสังฆราชองค์ที่ 19)', short:'รพช.ท่าม่วง (สมเด็จฯ19)', amphur:'ท่าม่วง', lat:13.9759, lng:99.6311}
+];
+/* สถานะเริ่มต้น อ้างอิงรายงานวันที่ 29 ก.ย. 2569 เวลา 09:55 น. */
+const HOSPITAL_SEED_STATUS = {
+  h01:1, h02:1, h03:1, h04:1, h05:2, h06:2, h07:2, h08:1, h09:1, h10:1, h11:2, h12:2, h13:2, h14:1, h15:1
+};
+const HOSPITAL_SEED_NOTE = {
+  h05:'มีน้ำท่วมผิวจราจรเป็นช่วงๆ',
+  h06:'มีน้ำท่วมขังถนนบริเวณเขื่อนท่าทุ่งนา แต่สัญจรได้',
+  h07:'มีหลายเส้นทางที่ไม่สามารถสัญจรได้ ไม่กระทบเส้นทาง refer แต่อาจกระทบ EMS',
+  h11:'ยังมีน้ำไหลตัดผ่านถนนบางจุด',
+  h12:'มีบางช่วงที่น้ำไหลข้ามถนน ตรงวัดทุ่งก้างย่าง แต่ผ่านไปได้',
+  h13:'มีน้ำท่วมขังถนนบริเวณเขื่อนท่าทุ่งนา แต่สัญจรได้'
+};
+
+function hospitals(){
+  const seed = HOSPITAL_SEED
+    .filter(h => !hospitalRemoved.includes(h.id))
+    .map(h => Object.assign({}, h, hospitalEdits[h.id] || {}));
+  return seed.concat(hospitalAdded);
+}
+function hospById(id){ return hospitals().find(h => h.id === id) || null; }
+function hospStatus(id){
+  const st = opsStatus[id];
+  if (st) return st;
+  if (HOSPITAL_SEED_STATUS[id]) {
+    return {status:HOSPITAL_SEED_STATUS[id], note:HOSPITAL_SEED_NOTE[id] || '',
+            incident:'อุทกภัย', updatedAt:0, by:'', seeded:true};
+  }
+  return {status:0, note:'', incident:'', updatedAt:0, by:''};
+}
+function saveOps(){
+  jsave(KEY_OPS, {edits:hospitalEdits, added:hospitalAdded, removed:hospitalRemoved,
+                  status:opsStatus, roads:opsRoadStatus, history:opsHistory.slice(-400)});
+}
+function loadOps(){
+  const o = jload(KEY_OPS, null);
+  if (!o) return;
+  hospitalEdits = o.edits || {};
+  hospitalAdded = Array.isArray(o.added) ? o.added : [];
+  hospitalRemoved = Array.isArray(o.removed) ? o.removed : [];
+  opsStatus = o.status || {};
+  opsRoadStatus = o.roads || {};
+  opsHistory = Array.isArray(o.history) ? o.history : [];
+}
+function setOpsStatus(kind, id, status, note, incident){
+  const rec = {status:+status, note:String(note||'').trim().slice(0,300),
+               incident:String(incident||''), updatedAt:Date.now(), by:profile.name || 'ไม่ระบุ'};
+  if (kind === 'hospital') opsStatus[id] = rec;
+  else opsRoadStatus[id] = rec;
+  opsHistory.push(Object.assign({id:uid(), kind:kind, targetId:id}, rec));
+  if (opsHistory.length > 400) opsHistory = opsHistory.slice(-400);
+  saveOps();
+}
+function historyFor(kind, id){
+  return opsHistory.filter(h => h.kind === kind && h.targetId === id)
+                  .sort((a, b) => b.updatedAt - a.updatedAt);
+}
+/* จัดอันดับความสำคัญ: ติดขัด(3) > ระวัง(2) > ปกติ(1) > ไม่มีข้อมูล(0)
+   คืนค่ายิ่งสูงยิ่งขึ้นก่อน แล้วใช้ .sort((a,b)=> rank(b)-rank(a)) */
+function severityRank(status){
+  const s = +status || 0;
+  return s === 0 ? 0 : s;
+}
+function agoOps(ts){
+  if (!ts) return 'ยังไม่มีการอัปเดต';
+  return ago(ts);
+}
+function fmtThaiTime(ts){
+  if (!ts) return '-';
+  const d = new Date(ts);
+  const p2 = n => String(n).padStart(2, '0');
+  return p2(d.getDate()) + '/' + p2(d.getMonth()+1) + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes()) + ' น.';
+}
 
 /* ============================================================
    helpers
@@ -563,15 +744,17 @@ function beep(){
 ============================================================ */
 let dbPromise = null;
 let dbBroken = false;
+const DB_VER = 2;
 function db(){
-  if (dbBroken) return Promise.reject(new Error('คลังรูปใช้งานไม่ได้'));
+  if (dbBroken) return Promise.reject(new Error('คลังข้อมูลใช้งานไม่ได้'));
   if (dbPromise) return dbPromise;
   dbPromise = new Promise((res, rej) => {
-    if (!('indexedDB' in window)) return rej(new Error('เบราว์เซอร์นี้ไม่รองรับการเก็บรูป'));
-    const rq = indexedDB.open(MEDIA_DB, 1);
+    if (!('indexedDB' in window)) return rej(new Error('เบราว์เซอร์นี้ไม่รองรับการเก็บข้อมูล'));
+    const rq = indexedDB.open(MEDIA_DB, DB_VER);
     rq.onupgradeneeded = () => {
       const d = rq.result;
       if (!d.objectStoreNames.contains('photos')) d.createObjectStore('photos', {keyPath:'id'});
+      if (!d.objectStoreNames.contains('kv')) d.createObjectStore('kv');
     };
     rq.onsuccess = () => {
       const d = rq.result;
@@ -595,11 +778,23 @@ function tx(mode, fn){
     t.onabort    = () => rej(t.error);
   }));
 }
+function txStore(store, mode, fn){
+  return db().then(d => new Promise((res, rej) => {
+    const t = d.transaction(store, mode);
+    const rq = fn(t.objectStore(store));
+    t.oncomplete = () => res(rq && 'result' in rq ? rq.result : undefined);
+    t.onerror    = () => rej(t.error);
+    t.onabort    = () => rej(t.error);
+  }));
+}
 const mediaPut   = rec => tx('readwrite', s => s.put(rec));
 const mediaGet   = id  => tx('readonly',  s => s.get(id));
 const mediaDel   = id  => tx('readwrite', s => s.delete(id));
 const mediaAll   = ()  => tx('readonly',  s => s.getAll());
 const mediaClear = ()  => tx('readwrite', s => s.clear());
+const kvPut = (k, v) => txStore('kv', 'readwrite', s => s.put(v, k));
+const kvGet = k      => txStore('kv', 'readonly',  s => s.get(k));
+const kvDel = k      => txStore('kv', 'readwrite', s => s.delete(k));
 
 const urlCache = new Map();
 const inflightUrls = new Map();   // กันเรียก photoUrl ซ้ำระหว่างที่ยังอ่านไม่เสร็จ (เคยทำให้ object URL รั่ว)
@@ -991,6 +1186,37 @@ function makeGoogleMap(el){
       map.fitBounds(b, {top:q, right:q, bottom:q, left:q});
     },
     closePopup(){ if (infoWin){ infoWin.close(); infoWin = null; } },
+    drawLines(lines){
+      return lines.map(l => {
+        const path = l.pts.map(pt => ({lat:pt[0], lng:pt[1]}));
+        const pl = new gm.Polyline({map, path, strokeColor:l.color, strokeWeight:l.weight,
+          strokeOpacity:l.opacity, clickable:false, zIndex:0});
+        return {close(){ try{ pl.setMap(null); }catch(e){} }};
+      });
+    },
+    addSimpleMarker(lat, lng, html, title, wire){
+      const holder = document.createElement('div');
+      holder.style.cssText = 'cursor:pointer;line-height:0';
+      holder.innerHTML = html;
+      let mk;
+      if (adv){
+        mk = new adv({map, position:{lat, lng}, content:holder, title:title || '', gmpClickable:true});
+      }else{
+        mk = new gm.Marker({map, position:{lat, lng}, title:title || ''});
+      }
+      const open = () => {
+        if (infoWin) infoWin.close();
+        infoWin = new gm.InfoWindow({content:html, position:{lat, lng}, maxWidth:280});
+        infoWin.open({map, anchor:mk});
+        gm.event.addListenerOnce(infoWin, 'domready', () => {
+          const box = infoWin && infoWin.getContent();
+          if (box && box.nodeType === 1 && wire) wire(box);
+        });
+      };
+      if (adv) mk.addListener('click', open);
+      else gm.event.addListener(mk, 'click', open);
+      return {close(){ try{ if (adv) mk.map = null; else mk.setMap(null); }catch(e){} }, open};
+    },
     drawReports(list){
       reportLayers.forEach(l => { try{ l.setMap(null); }catch(e){} });
       reportLayers = [];
@@ -1083,6 +1309,24 @@ function makeOsmMap(el){
         {padding:[pad||40, pad||40]});
     },
     closePopup(){ map.closePopup(); if (pop){ pop.remove(); pop = null; } },
+    drawLines(lines){
+      const g = L.layerGroup().addTo(map);
+      lines.forEach(l => {
+        try{
+          L.polyline(l.pts, {color:l.color, weight:l.weight, opacity:l.opacity,
+            lineCap:'round', lineJoin:'round', interactive:false, smoothFactor:1.5}).addTo(g);
+        }catch(e){}
+      });
+      return [{close(){ try{ map.removeLayer(g); }catch(e){} }}];
+    },
+    addSimpleMarker(lat, lng, html, title, wire){
+      const mk = L.marker([lat, lng], {
+        icon: L.divIcon({className:'', html, iconSize:[26,26], iconAnchor:[13,13]}),
+        title, keyboard:true, bubblingMouseEvents:false
+      }).addTo(map);
+      if (wire) mk.on('popupopen', e => wire(e.popup.getElement()));
+      return {close(){ try{ map.removeLayer(mk); }catch(e){} }, open(){ mk.openPopup(); }};
+    },
     drawReports(list){
       layer.clearLayers();
       Object.keys(pins).forEach(k => delete pins[k]);
@@ -1159,7 +1403,20 @@ function initMap(){
     if (mapApi){
       mapApi.onPick(pos => {
         if (!picking) return;
-        if (!inArea(pos.lat, pos.lng)){ toast('อยู่นอกเขต'+AREA.name, 'รายงานได้เฉพาะในจังหวัด'+AREA.name+'เท่านั้น'); return; }
+        if (!inArea(pos.lat, pos.lng)){ toast('อยู่นอกเขต'+AREA.name, 'ใช้ได้เฉพาะในจังหวัด'+AREA.name+'เท่านั้น'); return; }
+        if (movingHosp){
+          const job = movingHosp;            // เก็บอ้างอิงก่อน เพราะ stopPick() จะล้างค่านี้ทิ้ง
+          movingHosp = null;
+          stopPick();
+          finishHospMove(job, pos);
+          return;
+        }
+        if (typeof pickHook === 'function'){
+          const h = pickHook; pickHook = null;
+          stopPick();
+          h(pos);
+          return;
+        }
         stopPick();
         openReportForm(pos);
       });
@@ -1176,6 +1433,590 @@ function initMap(){
 let mapGoogleError = null;
 let mapApiError = null;
 
+/* ============================================================
+   เครือข่ายถนนจังหวัดกาญจนบุรี (จาก OpenStreetMap ผ่าน Overpass API)
+   ดึงครั้งเดียว ~2.4 MB แล้วเก็บใน IndexedDB ใช้ต่อได้ออฟไลน์
+   ประกอบด้วยทางหลวงหลัก + ถนนหลัก (1,080 ช่วง / 32,547 จุด)
+============================================================ */
+const ROAD_KEY = 'roadnet';
+const OVERPASS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter'
+];
+const ROAD_CLASS = {
+  motorway:  { speed: 88, w: 5,  color: '#c9d3d0' },
+  trunk:     { speed: 80, w: 4,  color: '#c9d3d0' },
+  primary:   { speed: 68, w: 3,  color: '#d3dbd8' },
+  secondary: { speed: 58, w: 2,  color: '#dae1de' }
+};
+
+let roadNet = null;         // {v, fetchedAt, ways:[{k,r,n,c,nd:[nodeIdx]}], nodes:[[lat*1e5,lng*1e5]]}
+let roadGraph = null;       // {adj: Map(idx -> [{to, len, cls, ref, name}])}
+let roadRefs = [];          // [{ref, name, count}]
+let roadLayers = [];        // วัตถุบนแผนที่
+let routeLayers = [];
+let roadLayerBusy = false;
+let showRoads = false;
+let roadLoading = false;
+let route = null;           // {from, to, pts, km, min, warn:[ref]}
+
+function roadFetchState(){
+  if (roadNet) return 'พร้อม (' + roadRefs.length + ' เส้นทาง)';
+  if (roadLoading) return 'กำลังดึง…';
+  return 'ยังไม่ได้ดึงข้อมูล';
+}
+async function loadRoadNet(force){
+  if (!force){
+    try{
+      const cached = await kvGet(ROAD_KEY);
+      if (cached && cached.ways && cached.ways.length){
+        roadNet = cached;
+        buildRoadGraph();
+        indexRoadRefs();
+        return roadNet;
+      }
+    }catch(e){}
+  }
+  const raw = await fetchRoadNet();
+  roadNet = raw;
+  buildRoadGraph();
+  indexRoadRefs();
+  try{ await kvPut(ROAD_KEY, raw); }catch(e){}   // แคชไม่ได้ก็ยังใช้ต่อได้ในรอบนี้
+  return roadNet;
+}
+function ensureRoadNet(force){
+  if (roadNet && !force) return Promise.resolve(roadNet);
+  if (roadLoading) return roadLoading;           // ผู้เรียกพร้อมกัน: รอ promise เดิม ไม่ใช่ null
+  roadLoading = (async () => {
+    renderRoads();
+    try{
+      return await loadRoadNet(force);
+    }catch(err){
+      toast('ดึงข้อมูลถนนไม่สำเร็จ', err.message || 'ลองใหม่อีกครั้ง หรือใช้งานแบบไม่มีชั้นถนนไปก่อน');
+      return null;
+    }finally{
+      drawRoadLayer();     // โหลดเสร็จต้องวาดชั้นถนนทันที ไม่ใช่รอผู้ใช้ไปสลับสวิตช์
+      renderRoads();
+      renderTabs();
+      roadLoading = null;
+    }
+  })();
+  return roadLoading;
+}
+async function fetchRoadNet(){
+  const bbox = [AREA.south, AREA.west, AREA.north, AREA.east].join(',');
+  const q = '[out:json][timeout:120];'
+    + 'way["highway"~"^(motorway|trunk|primary|secondary)$"](' + bbox + ');'
+    + 'out body;>;out skel qt;';
+  let lastErr = null;
+  for (const url of OVERPASS){
+    try{
+      const ctl = new AbortController();
+      const to = setTimeout(() => ctl.abort(), 100000);
+      const r = await fetch(url, {
+        method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:'data=' + encodeURIComponent(q),
+        signal: ctl.signal
+      });
+      clearTimeout(to);
+      if (!r.ok){ lastErr = new Error('เซิร์ฟเวอร์ตอบ ' + r.status); continue; }
+      const j = await r.json();
+      const els = j.elements || [];
+      const nodeId = new Map();
+      const nodes = [];
+      const ways = [];
+      // ต้องอ่าน node ให้ครบก่อน แล้วค่อยประกอบ way — Overpass คืน ways มาก่อน nodes
+      els.forEach(e => {
+        if (e.type === 'node' && !nodeId.has(e.id)){
+          nodeId.set(e.id, nodes.length);
+          nodes.push([Math.round(e.lat*1e5), Math.round(e.lon*1e5)]);
+        }
+      });
+      els.forEach(e => {
+        if (e.type !== 'way') return;
+        const nd = (e.nodes || []).map(n => nodeId.get(n)).filter(v => v !== undefined);
+        if (nd.length < 2) return;
+        const t = e.tags || {};
+        ways.push({k:String(e.id), r:String(t.ref || '').split(';')[0].trim(),
+                   n:String(t['name:th'] || t.name || ''), c:String(t.highway || 'secondary'),
+                   nd:nd});
+      });
+      if (!ways.length) throw new Error('ไม่พบข้อมูลถนนในผลลัพธ์');
+      return {v:1, fetchedAt:Date.now(), nodes, ways};
+    }catch(e){
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error('เชื่อมต่อ Overpass ไม่สำเร็จ');
+}
+function buildRoadGraph(){
+  if (!roadNet) return;
+  const adj = new Map();
+  const nn = roadNet.nodes;
+  for (let i = 0; i < nn.length; i++) adj.set(i, []);
+  roadNet.ways.forEach(w => {
+    const spd = (ROAD_CLASS[w.c] || ROAD_CLASS.secondary).speed;
+    for (let i = 0; i < w.nd.length - 1; i++){
+      const a = w.nd[i], b = w.nd[i+1];
+      if (a === b) continue;
+      const dx = (nn[b][0] - nn[a][0]) / 1e5 * 111320 * Math.cos(nn[a][1]/1e5*Math.PI/180);
+      const dy = (nn[b][1] - nn[a][1]) / 1e5 * 111320;
+      const len = Math.sqrt(dx*dx + dy*dy);
+      if (!len || !isFinite(len)) continue;
+      adj.get(a).push({to:b, len, cls:w.c, ref:w.r, name:w.n});
+      adj.get(b).push({to:a, len, cls:w.c, ref:w.r, name:w.n});
+    }
+  });
+  roadGraph = {adj};
+}
+function indexRoadRefs(){
+  const m = new Map();
+  (roadNet ? roadNet.ways : []).forEach(w => {
+    if (!w.r) return;
+    if (!m.has(w.r)) m.set(w.r, {ref:w.r, name:w.n, count:0});
+    const e = m.get(w.ref || w.r);
+    e.count++;
+    if (!e.name && w.n) e.name = w.n;
+  });
+  roadRefs = Array.from(m.values()).sort((a, b) => a.ref.localeCompare(b.ref, 'th', {numeric:true}));
+}
+function roadStatusOf(ref){ return opsRoadStatus['r:' + ref] || null; }
+function roadBlockedRefs(){
+  const blocked = new Set(), warn = new Set();
+  Object.keys(opsRoadStatus).forEach(k => {
+    if (k.indexOf('r:') !== 0) return;
+    const ref = k.slice(2), st = opsRoadStatus[k];
+    if (st.status === 3) blocked.add(ref);
+    else if (st.status === 2) warn.add(ref);
+  });
+  return {blocked, warn};
+}
+function drawRoadLayer(){
+  clearOverlay(roadLayers); roadLayers = [];
+  if (!showRoads || !mapApi || roadLayerBusy) return;
+  if (!roadNet) return;
+  roadLayerBusy = true;
+  try{
+    const lines = [];
+    const n = roadNet.nodes;
+    roadNet.ways.forEach(w => {
+      if (w.nd.length > 400) return;   // ข้ามเส้นที่ยาวผิดปกติ (กันค้าง)
+      const stt = opsRoadStatus['r:' + w.r];
+      const base = ROAD_CLASS[w.c] || ROAD_CLASS.secondary;
+      const color = stt ? OPS_LEVELS[stt.status].color : base.color;
+      const weight = stt ? Math.max(3, base.w) : base.w;
+      const opacity = stt ? 0.95 : 0.6;
+      const pts = w.nd.map(i => [n[i][0]/1e5, n[i][1]/1e5]);
+      lines.push({pts, color, weight, opacity, ref:w.r, name:w.n, cls:w.c});
+    });
+    roadLayers = drawLines(lines);
+    if (route) drawRoute();          // วาดเส้นทางคำนวณไว้ก่อนหน้าใหม่ให้ตรงกับชั้นถนนล่าสุด
+  }catch(e){
+    console.warn('วาดชั้นถนนไม่สำเร็จ', e);
+  }finally{
+    roadLayerBusy = false;
+  }
+}
+
+function renderRoads(){
+  const box = $('#roadBox'), list = $('#roadList'), chips = $('#roadChips');
+  if (!box) return;
+  const {blocked, warn} = roadBlockedRefs();
+  const marked = Object.keys(opsRoadStatus).filter(k => k.indexOf('r:') === 0).length;
+  box.innerHTML = '<div class="sumcard">'
+    + '<div class="t">สถานะถนน &amp; เส้นทาง</div>'
+    + '<div class="m">ข้อมูลถนน: ' + esc(roadFetchState())
+      + (roadNet ? ' · ' + roadRefs.length + ' เลขทางหลวง' : '') + '</div>'
+    + '<div class="sdots">'
+      + '<span class="sdot"><i style="background:'+OPS_LEVELS[3].color+'"></i>ตัด '+blocked.size+'</span>'
+      + '<span class="sdot"><i style="background:'+OPS_LEVELS[2].color+'"></i>ระวัง '+warn.size+'</span>'
+      + '<span class="sdot"><i style="background:'+OPS_LEVELS[1].color+'"></i>ปกติ</span>'
+    + '</div>'
+    + (marked ? '<div class="m" style="margin-top:6px">มีการบันทึกสถานะไว้ '+marked+' เส้นทาง</div>' : '')
+    + '</div>';
+
+  if (!roadNet){
+    list.innerHTML = '<li class="empty">ยังไม่มีข้อมูลถนน — กด “โหลด/รีเฟรชข้อมูลถนน” เพื่อดึงจาก OpenStreetMap '
+      + '(ครั้งแรกใช้เวลาสักครู่ ประมาณ 2–3 MB) หรือเปิดสวิตช์ “ถนน” ข้างบนเพื่อดึงอัตโนมัติ</li>';
+    chips.innerHTML = '';
+    return;
+  }
+  const defs = [[0,'ทั้งหมด',roadRefs.length],[3,'ตัด',blocked.size],[2,'ระวัง',warn.size],[1,'ปกติ',roadRefs.length-blocked.size-warn.size]];
+  chips.innerHTML = defs.filter(d => d[0] === 0 || d[2] > 0).map(([v,t,n]) =>
+    '<button class="chip" data-v="'+v+'" aria-pressed="'+(roadFilter===v)+'">'+t+' '+n+'</button>').join('');
+  chips.querySelectorAll('.chip').forEach(b => b.onclick = () => { roadFilter = +b.dataset.v; renderRoads(); });
+
+  const q = roadQuery.trim().toLowerCase();
+  const rows = roadRefs.filter(r => {
+    const stt = opsRoadStatus['r:' + r.ref];
+    const lv = stt ? stt.status : 1;
+    if (roadFilter === 3 && lv !== 3) return false;
+    if (roadFilter === 2 && lv !== 2) return false;
+    if (roadFilter === 1 && lv >= 2) return false;
+    if (!q) return true;
+    return r.ref.toLowerCase().indexOf(q) >= 0 || (r.name||'').toLowerCase().indexOf(q) >= 0;
+  });
+  if (!rows.length){ list.innerHTML = '<li class="empty">ไม่พบเส้นทางที่ค้นหา</li>'; return; }
+  list.innerHTML = rows.map(r => {
+    const stt = opsRoadStatus['r:' + r.ref];
+    const lv = OPS_LEVELS[stt ? stt.status : 1];
+    return '<li data-ref="'+esc(r.ref)+'">'
+      + '<span class="lvl" style="background:'+lv.color+'"></span>'
+      + '<div class="em">'
+        + '<div class="nm">ทางหลวงหมายเลข '+esc(r.ref)+(r.name ? ' · '+esc(r.name) : '')+'</div>'
+        + '<div class="sub">'+lv.label+(stt && stt.updatedAt ? ' · '+agoOps(stt.updatedAt) : '')+'</div>'
+        + (stt && stt.note ? '<div class="note">'+esc(stt.note)+'</div>' : '')
+      + '</div>'
+      + '<button class="go" data-rup="'+esc(r.ref)+'">ตั้งสถานะ</button>'
+    + '</li>';
+  }).join('');
+  list.querySelectorAll('li[data-ref]').forEach(li => {
+    li.querySelector('.em').onclick = () => openRoadDialog(li.dataset.ref);
+    li.querySelector('[data-rup]').onclick = e => { e.stopPropagation(); openRoadDialog(li.dataset.ref, true); };
+  });
+}
+
+function openRoadDialog(ref, focus){
+  const stt = opsRoadStatus['r:' + ref];
+  const info = roadRefs.find(r => r.ref === ref) || {ref, name:''};
+  const dlg = $('#dlgRoad');
+  dlg.innerHTML = '<form method="dialog" id="frmRoad">'
+    + '<h2>ทางหลวงหมายเลข '+esc(ref)+'</h2>'
+    + '<p class="sub">'+esc(info.name || '')+(info.count ? ' · '+info.count+' ช่วงในเขต' : '')+'</p>'
+    + '<fieldset><legend>สถานะการสัญจร</legend>'
+      + [1,2,3].map(v => '<label class="opt" style="--c:'+OPS_LEVELS[v].color+'"><input type="radio" name="rs" value="'+v+'"'+(stt && stt.status===v?' checked':(!stt&&v===1?' checked':''))+'><span><b>'+OPS_LEVELS[v].label+'</b><small>'+['ผ่านได้ตามปกติ','ผ่านได้แต่ควรระวัง','ผ่านไม่ได้ ต้องเลี่ยง'][v-1]+'</small></span></label>').join('')
+    + '</fieldset>'
+    + '<label class="f">สาเหตุ'
+      + '<select id="rdReason">'+['ไม่ระบุ','น้ำท่วม','ดินโคลนถล่ม','ต้นไม้ล้ม','สะพานปิด','งานก่อสร้าง','อื่น ๆ'].map(i => '<option'+(stt && stt.reason===i?' selected':'')+'>'+i+'</option>').join('')+'</select>'
+    + '</label>'
+    + '<label class="f">หมายเหตุ'
+      + '<textarea id="rdNote" rows="2" maxlength="300" placeholder="เช่น น้ำท่วมลึก 60 ซม. ช่วง กม.12–18">'+(stt?esc(stt.note||''):'')+'</textarea>'
+    + '</label>'
+    + '<label class="f">ชื่อผู้อัปเดต<input id="rdBy" maxlength="40" value="'+esc(profile.name||'')+'"></label>'
+    + '<div class="row">'
+      + (stt ? '<button class="btn danger" type="button" id="rClear">ล้างสถานะ</button>' : '')
+      + '<button class="btn" type="button" data-close="dlgRoad">ปิด</button>'
+      + '<button class="btn primary" type="submit"'+(focus?' autofocus':'')+'>บันทึก</button>'
+    + '</div>'
+  + '</form>';
+  $('#frmRoad').addEventListener('submit', e => {
+    e.preventDefault();
+    const lv = +($('#frmRoad input[name=rs]:checked') || {}).value || 1;
+    const rec = {status:lv, note:$('#rdNote').value, reason:$('#rdReason').value,
+                 updatedAt:Date.now(), by:$('#rdBy').value.trim() || 'ไม่ระบุ'};
+    const key = 'r:' + ref;
+    opsRoadStatus[key] = rec;
+    opsHistory.push(Object.assign({id:uid(), kind:'road', targetId:key}, rec));
+    const nm = $('#rdBy').value.trim();
+    if (nm && nm !== profile.name){ profile.name = nm; jsave(KEY_IDENT, profile); }
+    saveOps();
+    $('#dlgRoad').close();
+    renderRoads(); drawRoadLayer(); renderTabs();
+    toast('บันทึกสถานะถนนแล้ว', 'ทางหลวงหมายเลข ' + ref + ' — ' + OPS_LEVELS[lv].label);
+    if (lv === 3) clearRoute();
+  });
+  const clr = $('#rClear');
+  if (clr) clr.onclick = () => {
+    delete opsRoadStatus['r:' + ref];
+    saveOps(); $('#dlgRoad').close(); renderRoads(); drawRoadLayer(); renderTabs();
+    toast('ล้างสถานะแล้ว', 'ทางหลวงหมายเลข ' + ref);
+  };
+  $('#dlgRoad').querySelector('[data-close]').onclick = () => $('#dlgRoad').close();
+  dlg.showModal();
+}
+
+/* ============================================================
+   คำนวณเส้นทางด้วย A* บนกราฟที่สร้างจาก OSM
+   เลี่ยงเส้นทางที่ถูกตั้งเป็น "ตัด" และลงโทษเส้นทาง "ระวัง" ด้วยน้ำหนักเพิ่ม
+============================================================ */
+function nearestNode(lat, lng){
+  if (!roadNet) return -1;
+  let best = -1, bd = Infinity;
+  const nn = roadNet.nodes;
+  for (let i = 0; i < nn.length; i++){
+    const dy = (nn[i][0]/1e5 - lat) * 111320;
+    const dx = (nn[i][1]/1e5 - lng) * 111320 * Math.cos(lat*Math.PI/180);
+    const d = dx*dx + dy*dy;
+    if (d < bd){ bd = d; best = i; }
+  }
+  return best;
+}
+function edgeCost(e, blocked, warn){
+  const spd = (ROAD_CLASS[e.cls] || ROAD_CLASS.secondary).speed;
+  let t = e.len / 1000 / spd * 60;          // นาที
+  if (blocked && blocked.has(e.ref)) return Infinity;
+  if (warn && warn.has(e.ref)) t *= 2.5;    // เลี่ยงถ้าทำได้
+  return t;
+}
+function aStar(startIdx, goalIdx, blocked, warn){
+  if (startIdx < 0 || goalIdx < 0 || startIdx === goalIdx || !roadGraph) return null;
+  const nn = roadNet.nodes;
+  const h = i => {
+    const dy = (nn[i][0]/1e5 - nn[goalIdx][0]/1e5) * 111320;
+    const dx = (nn[i][1]/1e5 - nn[goalIdx][1]/1e5) * 111320 * Math.cos(nn[goalIdx][1]/1e5*Math.PI/180);
+    return Math.sqrt(dx*dx + dy*dy) / 1000 / 88 * 60;   // heuristic ใช้ความเร็วสูงสุด = ไม่ over-estimate
+  };
+  const gScore = new Map([[startIdx, 0]]);
+  const came = new Map();
+  const open = [[h(startIdx), startIdx]];
+  const closed = new Set();
+  let guard = 0;
+
+  while (open.length){
+    if (++guard > 400000) break;
+    // pop ค่า f ต่ำสุด (รายการเล็ก ใช้ linear scan เร็วพอสำหรับ ~30k node)
+    let bi = 0;
+    for (let i = 1; i < open.length; i++) if (open[i][0] < open[bi][0]) bi = i;
+    const cur = open.splice(bi, 1)[0][1];
+    if (cur === goalIdx){
+      const path = [cur];
+      let c = cur;
+      while (came.has(c)){ c = came.get(c); path.push(c); }
+      return {path: path.reverse(), cost: gScore.get(goalIdx)};
+    }
+    if (closed.has(cur)) continue;
+    closed.add(cur);
+    const edges = roadGraph.adj.get(cur) || [];
+    for (const e of edges){
+      const c = edgeCost(e, blocked, warn);
+      if (!isFinite(c)) continue;
+      const ng = gScore.get(cur) + c;
+      if (gScore.has(e.to) && ng >= gScore.get(e.to)) continue;
+      gScore.set(e.to, ng);
+      came.set(e.to, cur);
+      open.push([ng + h(e.to), e.to]);
+    }
+  }
+  return null;
+}
+function computeRoute(from, to){
+  if (!roadNet || !roadGraph){ toast('ยังไม่มีข้อมูลถนน', 'กด “โหลด/รีเฟรชข้อมูลถนน” ก่อน'); return null; }
+  const {blocked, warn} = roadBlockedRefs();
+  const a = nearestNode(from.lat, from.lng);
+  const b = nearestNode(to.lat, to.lng);
+  const res = aStar(a, b, blocked, warn);
+  if (!res) return null;
+  const nn = roadNet.nodes;
+  const pts = res.path.map(i => [nn[i][0]/1e5, nn[i][1]/1e5]);
+  // ระยะจริงตามพิกัด (ระวังชื่อตัวแปร: อย่าตั้งชื่อว่า km เพราะจะบังฟังก์ชัน km())
+  let totalKm = 0;
+  for (let i = 0; i < pts.length - 1; i++){
+    totalKm += km({lat:pts[i][0], lng:pts[i][1]}, {lat:pts[i+1][0], lng:pts[i+1][1]});
+  }
+  // เส้นทางที่ผ่านถนนต้องระวัง
+  const hitWarn = new Set();
+  res.path.forEach((i, k) => {
+    if (k === 0) return;
+    const edges = roadGraph.adj.get(i) || [];
+    const e = edges.find(x => x.to === res.path[k-1]);
+    if (e && e.ref && warn.has(e.ref)) hitWarn.add(e.ref);
+  });
+  return {from, to, pts, km:totalKm, min:Math.round(res.cost), warn:Array.from(hitWarn),
+          blockedHit: blockedHitCheck(res.path, blocked)};
+}
+function blockedHitCheck(path, blocked){
+  if (!blocked || !blocked.size) return [];
+  const hit = new Set();
+  for (let k = 1; k < path.length; k++){
+    const edges = roadGraph.adj.get(path[k]) || [];
+    const e = edges.find(x => x.to === path[k-1]);
+    if (e && e.ref && blocked.has(e.ref)) hit.add(e.ref);
+  }
+  return Array.from(hit);
+}
+
+function clearRoute(){
+  clearOverlay(routeLayers); routeLayers = [];
+  route = null;
+  const box = $('#routeOut');
+  if (box) box.innerHTML = '';
+}
+function drawRoute(){
+  clearOverlay(routeLayers); routeLayers = [];
+  if (!route || !route.pts.length) return;
+  const lines = [
+    {pts:route.pts, color:'#1a73e8', weight:5, opacity:.95},
+    {pts:route.pts, color:'#ffffff', weight:1.5, opacity:.85}
+  ];
+  routeLayers = drawLines(lines);
+  const mFrom = addSimpleMarker(route.from.lat, route.from.lng,
+    '<svg width="18" height="18" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="#1a73e8" stroke="#fff" stroke-width="2.5"/></svg>',
+    'ต้นทาง', null);
+  const mTo = addSimpleMarker(route.to.lat, route.to.lng,
+    '<svg width="18" height="18" viewBox="0 0 24 24"><path d="M12 2a7 7 0 00-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 00-7-7zm0 9.5A2.5 2.5 0 1114.5 9 2.5 2.5 0 0112 11.5z" fill="#c7223a" stroke="#fff" stroke-width="1.6"/></svg>',
+    'ปลายทาง', null);
+  if (mFrom) routeLayers.push(mFrom);
+  if (mTo) routeLayers.push(mTo);
+  const box = $('#routeOut');
+  if (box){
+    box.innerHTML = '<div class="sumcard" style="margin:10px 20px 0">'
+      + '<div class="t">เส้นทางแนะนำ</div>'
+      + '<div class="m">ระยะ ' + route.km.toFixed(1) + ' กม. · ใช้เวลาประมาณ ' + route.min + ' นาที (ความเร็วเฉลี่ย)</div>'
+      + (route.blockedHit.length ? '<div class="note" style="color:'+OPS_LEVELS[3].color+'">ผ่านเส้นทางที่ถูกตัด: '+esc(route.blockedHit.join(', '))+' — ข้อมูลอาจไม่ครบ</div>' : '')
+      + (route.warn.length ? '<div class="note" style="color:'+OPS_LEVELS[2].color+'">ผ่านเส้นทางที่ควรระวัง: '+esc(route.warn.join(', '))+'</div>' : '')
+      + '</div>';
+  }
+}
+function routeTo(pos, label){
+  const from = userPos || {lat:AREA.center.lat, lng:AREA.center.lng};
+  if (!userPos){ toast('ยังไม่ทราบตำแหน่งของคุณ', 'คำนวณจากกลางจังหวัดกาญจนบุรีแทน — กด “แจ้งเตือนใกล้ฉัน” เพื่อให้แม่นขึ้น'); }
+  const r = computeRoute(from, pos);
+  if (!r){ toast('หาเส้นทางไม่ได้', 'อาจไม่มีถนนเชื่อมถึงจุดนั้นในข้อมูลที่โหลด'); return; }
+  route = r;
+  drawRoute();
+  if (mapApi) mapApi.fit(r.pts, 70);
+  toast('หาเส้นทางแล้ว', (label ? label + ' · ' : '') + r.km.toFixed(1) + ' กม. / ~' + r.min + ' นาที');
+}
+function openRouteDialog(){
+  const spots = [];
+  if (userPos) spots.push(['ตำแหน่งของฉัน', userPos]);
+  hospitals().forEach(h => spots.push([h.name, {lat:h.lat, lng:h.lng}]));
+  if (route && route.to) spots.unshift(['จุดหมายล่าสุด', route.to]);
+  spots.push(['กลางจังหวัดกาญจนบุรี', {lat:AREA.center.lat, lng:AREA.center.lng}]);
+  const dlg = $('#dlgRoute');
+  dlg.innerHTML = '<form method="dialog" id="frmRoute">'
+    + '<h2>หาเส้นทาง</h2>'
+    + '<p class="sub">คำนวณบนเครื่อง โดยเลี่ยงถนนที่ตั้งเป็น “ตัด” และหลีกเลี่ยง “ระวัง”</p>'
+    + (!roadNet ? '<p class="note" style="color:'+OPS_LEVELS[2].color+'">ยังไม่ได้โหลดข้อมูลถนน — ระบบจะโหลดให้อัตโนมัติ</p>' : '')
+    + '<label class="f">ปลายทาง<select id="rTo">'
+      + spots.map(([n, p], i) => '<option value="'+i+'">'+esc(n)+'</option>').join('')
+    + '</select></label>'
+    + '<div class="row"><button class="btn" type="button" data-close="dlgRoute">ปิด</button>'
+    + '<button class="btn primary" type="submit">คำนวณ</button></div>'
+  + '</form>';
+  $('#frmRoute').addEventListener('submit', async e => {
+    e.preventDefault();
+    const i = +$('#rTo').value;
+    const pick = spots[i]; if (!pick) return;
+    $('#dlgRoute').close();
+    await ensureRoadNet();
+    routeTo(pick[1], pick[0]);
+  });
+  $('#dlgRoute').querySelector('[data-close]').onclick = () => $('#dlgRoute').close();
+  dlg.showModal();
+}
+function openHospRouteList(){
+  const here = userPos || AREA.center;
+  const list = hospitals()
+    .filter(h => hospStatus(h.id).status !== 3)          // ตัดออกแห่งที่ติดขัด (ส่งต่อไม่ได้)
+    .sort((a, b) => severityRank(hospStatus(b.id).status) - severityRank(hospStatus(a.id).status)
+                 || km(here, a) - km(here, b));         // ยืนยันว่ารับต่อได้ก่อน แล้วค่อยใกล้ก่อน
+  const dlg = $('#dlgHospRoute');
+  dlg.innerHTML = '<form method="dialog" id="frmHR">'
+    + '<h2>ไปโรงพยาบาลที่รับส่งต่อได้</h2>'
+    + '<p class="sub">' + (userPos ? 'เรียงตามสถานะและระยะจากคุณ' : 'ยังไม่ทราบตำแหน่ง — เรียงตามสถานะและระยะจากกลางจังหวัด') + '</p>'
+    + (roadNet ? '' : '<p class="note" style="color:'+OPS_LEVELS[2].color+'">ยังไม่ได้โหลดข้อมูลถนน จะโหลดให้อัตโนมัติ</p>')
+    + '<ul class="elist" style="padding:0">' + list.map(h => {
+        const st = hospStatus(h.id);
+        const lv = OPS_LEVELS[st.status] || OPS_LEVELS[0];
+        const d = (userPos || AREA.center);
+        return '<li data-hr="'+esc(h.id)+'"><span class="lvl" style="background:'+lv.color+'"></span>'
+          + '<div class="em"><div class="nm">'+esc(h.name)+'</div>'
+          + '<div class="sub">'+lv.label+' · '+km(d, h).toFixed(0)+' กม.</div></div>'
+          + '<button class="go" type="button" data-hgo="'+esc(h.id)+'">เส้นทาง</button></li>';
+      }).join('') + '</ul>'
+    + '<div class="row"><button class="btn" type="button" data-close="dlgHospRoute">ปิด</button></div>'
+  + '</form>';
+  $('#dlgHospRoute').querySelectorAll('[data-hgo]').forEach(b => b.onclick = async () => {
+    const h = hospById(b.dataset.hgo); if (!h) return;
+    $('#dlgHospRoute').close();
+    await ensureRoadNet();
+    routeTo({lat:h.lat, lng:h.lng}, h.name);
+  });
+  $('#dlgHospRoute').querySelector('[data-close]').onclick = () => $('#dlgHospRoute').close();
+  dlg.showModal();
+}
+
+/* ---------- overlay ทั่วไป (โรงพยาบาล / ถนน / เส้นทาง) ---------- */
+function drawLines(lines){
+  if (!mapApi || !mapApi.drawLines) return [];
+  try{ return mapApi.drawLines(lines) || []; }catch(e){ return []; }
+}
+function addSimpleMarker(lat, lng, html, title, wire){
+  if (!mapApi || !mapApi.addSimpleMarker) return null;
+  try{ return mapApi.addSimpleMarker(lat, lng, html, title, wire); }
+  catch(e){ return null; }
+}
+function clearOverlay(list){
+  (list || []).forEach(m => { try{ m.close && m.close(); }catch(e){} });
+}
+
+/* ---------- ชั้นโรงพยาบาลบนแผนที่ ---------- */
+let hospMarkers = [];
+let showHosp = false;
+let movingHosp = null;   // {id}
+let pickHook = null;     // ฟังก์ชันชั่วคราวสำหรับโหมด "เลือกพิกัด" (ใช้ตอนจัดหมุด)
+
+function hospIcon(level, followed){
+  const ring = followed
+    ? '<circle cx="12" cy="12" r="11" fill="none" stroke="#d99a00" stroke-width="2"/>' : '';
+  return '<svg width="26" height="26" viewBox="0 0 24 24" style="display:block;overflow:visible">'
+    + ring
+    + '<circle cx="12" cy="12" r="9" fill="#fff" stroke="'+level.color+'" stroke-width="2.5"/>'
+    + '<path d="M12 6.5v11M6.5 12h11" stroke="'+level.color+'" stroke-width="2.5" stroke-linecap="round"/>'
+  + '</svg>';
+}
+function hospHtml(h){
+  const st = hospStatus(h.id);
+  const lv = OPS_LEVELS[st.status] || OPS_LEVELS[0];
+  return '<b>'+esc(h.name)+'</b>'
+    + '<div class="pop-meta">'+esc(h.amphur||'')
+      + (h.phone ? ' · โทร '+esc(h.phone) : '')
+      + (h.approx && !hospitalEdits[h.id] ? ' · <i>พิกัดคาดประมาณ</i>' : '')
+    + '</div>'
+    + '<div class="pop-meta" style="color:'+lv.color+';font-weight:700">'+lv.label+'</div>'
+    + (st.note ? '<p class="pop-note">'+esc(st.note)+'</p>' : '')
+    + (st.updatedAt ? '<div class="pop-meta">'+agoOps(st.updatedAt)+(st.by?' · '+esc(st.by):'')+'</div>' : '')
+    + '<div class="pop-acts">'
+      + '<button class="pop-btn" data-ha="open">อัปเดต/ดูรายละเอียด</button>'
+      + (h.phone ? '<a class="pop-btn" href="tel:'+esc(h.phone)+'">โทร</a>' : '')
+    + '</div>';
+}
+function renderHospLayer(){
+  const show = showHosp && mapApi;
+  clearOverlay(hospMarkers);
+  hospMarkers = [];
+  if (!show) return;
+  hospitals().forEach(h => {
+    const st = hospStatus(h.id);
+    const lv = OPS_LEVELS[st.status] || OPS_LEVELS[0];
+    const holder = document.createElement('div');
+    holder.style.cssText = 'cursor:pointer;line-height:0';
+    holder.innerHTML = hospIcon(lv, settings.followHosp.includes(h.id));
+    const m = addSimpleMarker(h.lat, h.lng, holder, h.name, hospHtml(h), (el) => {
+      el.querySelectorAll('[data-ha]').forEach(b => {
+        b.onclick = () => { mapApi.closePopup(); openHospDialog(h.id, true); };
+      });
+    });
+    if (m) hospMarkers.push(m);
+  });
+}
+function renderRoadsLayer(){ if (typeof drawRoadLayer === 'function') drawRoadLayer(); }
+
+function startHospMove(id){
+  const h = hospById(id); if (!h) return;
+  movingHosp = {id};
+  picking = true;
+  $('#hint').classList.add('on');
+  $('#map').classList.add('picking');
+  // ซ่อนปุ่ม "ใช้ตำแหน่งของฉัน" ไม่งั้นจะไปเปิดฟอร์มรายงานน้ำท่วมแทน
+  const useMe = $('#btnUseMe');
+  if (useMe) useMe.hidden = true;
+  const span = $('#hint').querySelector('span');
+  if (span) span.textContent = 'จัดหมุด “' + h.name + '” — แตะตำแหน่งจริงบนแผนที่';
+  toast('จัดหมุดใหม่', 'แตะตำแหน่งจริงของ ' + h.name + ' หรือกด “ยกเลิก”', 'var(--water)');
+}
+function finishHospMove(job, pos){
+  const id = job.id;
+  const h = hospById(id);
+  hospitalEdits[id] = Object.assign({}, hospitalEdits[id], {lat:+pos.lat.toFixed(5), lng:+pos.lng.toFixed(5), approx:false});
+  saveOps();
+  renderHospLayer(); renderRefer();
+  toast('บันทึกตำแหน่งแล้ว', (h ? h.name : '') + ' — ' + pos.lat.toFixed(5) + ', ' + pos.lng.toFixed(5));
+}
+
 function active(){ return reports.filter(r => !r.resolved); }
 function visible(){
   if (filter === 9) return reports.filter(r => r.resolved);
@@ -1190,6 +2031,283 @@ const byId = id => reports.find(r => r.id === id);
 function renderMap(){
   if (!mapApi) return;
   mapApi.drawReports(visible());
+}
+
+function renderRefer(){
+  const box = $('#referBox'), list = $('#referList'), chips = $('#referChips');
+  if (!box) return;
+  const all = hospitals();
+  const cnt = {1:0, 2:0, 3:0, 0:0};
+  all.forEach(h => cnt[hospStatus(h.id).status]++);
+  const last = all.map(h => hospStatus(h.id).updatedAt).filter(Boolean).sort((a,b) => b-a)[0];
+
+  box.innerHTML = '<div class="sumcard">'
+    + '<div class="t">สถานะการส่งต่อ (refer) จังหวัดกาญจนบุรี</div>'
+    + '<div class="m">อัปเดตล่าสุด: ' + (last ? agoOps(last) : 'ยังไม่มีข้อมูล') + '</div>'
+    + '<div class="sdots" style="padding:0">'
+      + '<span class="sdot"><i style="background:'+OPS_LEVELS[3].color+'"></i>ติดขัด '+cnt[3]+'</span>'
+      + '<span class="sdot"><i style="background:'+OPS_LEVELS[2].color+'"></i>ระวัง '+cnt[2]+'</span>'
+      + '<span class="sdot"><i style="background:'+OPS_LEVELS[1].color+'"></i>ปกติ '+cnt[1]+'</span>'
+      + '<span class="sdot"><i style="background:'+OPS_LEVELS[0].color+'"></i>ไม่มีข้อมูล '+cnt[0]+'</span>'
+    + '</div>'
+    + '<div class="row" style="justify-content:flex-start;margin-top:9px">'
+      + '<button class="btn sm primary" id="btnHospRoute">ไปโรงพยาบาลที่รับส่งต่อได้</button>'
+      + '<button class="btn sm" id="btnManageHosp">จัดการรายชื่อ/พิกัด</button>'
+    + '</div>'
+    + '</div>';
+
+  const defs = [[0,'ทั้งหมด',cnt[1]+cnt[2]+cnt[3]+cnt[0]],[3,'ติดขัด',cnt[3]],[2,'ระวัง',cnt[2]],[1,'ปกติ',cnt[1]],[4,'ไม่มีข้อมูล',cnt[0]]];
+  chips.innerHTML = defs.filter(d => d[0] === 0 || d[2] > 0).map(([v, t, n]) =>
+    '<button class="chip" data-v="'+v+'" aria-pressed="'+(referFilter===v)+'">'+t+' '+n+'</button>').join('');
+  chips.querySelectorAll('.chip').forEach(b => b.onclick = () => { referFilter = +b.dataset.v; renderRefer(); });
+
+
+  const br = $('#btnHospRoute');
+  if (br) br.onclick = async () => { await ensureRoadNet(); openHospRouteList(); };
+  const bm = $('#btnManageHosp');
+  if (bm) bm.onclick = openHospManage;
+
+  const items = all.filter(h => {
+    if (referFilter === 0) return true;
+    const st = hospStatus(h.id).status;
+    if (referFilter === 4) return st === 0;          // 4 = ยังไม่มีข้อมูล
+    return st === referFilter;
+  })
+                   .sort((a, b) => severityRank(hospStatus(b.id).status) - severityRank(hospStatus(a.id).status)
+                             || (hospStatus(b.id).updatedAt || 0) - (hospStatus(a.id).updatedAt || 0));
+  if (!items.length){
+    list.innerHTML = '<li class="empty">ไม่มีโรงพยาบาลในหมวดนี้</li>';
+    return;
+  }
+  list.innerHTML = items.map(h => {
+    const st = hospStatus(h.id);
+    const lv = OPS_LEVELS[st.status] || OPS_LEVELS[0];
+    const d = userPos ? ' · ' + km(userPos, h).toFixed(0) + ' กม.' : '';
+    const followed = settings.followHosp.includes(h.id);
+    return '<li data-h="'+esc(h.id)+'">'
+      + '<span class="lvl" style="background:'+lv.color+'"></span>'
+      + '<div class="em">'
+        + '<div class="nm">'+esc(h.name)+'</div>'
+        + '<div class="sub">'+esc(h.amphur||'')+d+' · '+lv.label+'</div>'
+        + (st.note ? '<div class="note">'+esc(st.note)+'</div>' : '')
+        + '<div class="tl">'
+          + (st.incident ? '<span class="tag">'+esc(st.incident)+'</span>' : '')
+          + '<span class="tag">'+agoOps(st.updatedAt)+'</span>'
+          + (st.by ? '<span class="tag">'+esc(st.by)+'</span>' : '')
+          + (h.approx && !hospitalEdits[h.id] ? '<span class="tag amb">พิกัดคาดประมาณ</span>' : '')
+        + '</div>'
+      + '</div>'
+      + '<button class="go" data-up="'+esc(h.id)+'">อัปเดต</button>'
+    + '</li>';
+  }).join('');
+
+  list.querySelectorAll('li[data-h]').forEach(li => {
+    li.querySelector('.em').onclick = () => openHospDialog(li.dataset.h);
+    li.querySelector('[data-up]').onclick = e => { e.stopPropagation(); openHospDialog(li.dataset.h, true); };
+  });
+}
+
+function openHospDialog(id, focusStatus){
+  const h = hospById(id);
+  if (!h) return;
+  const st = hospStatus(id);
+  const hist = historyFor('hospital', id);
+  const dlg = $('#dlgHosp');
+  dlg.innerHTML = '<form method="dialog" id="frmHosp">'
+    + '<h2>'+esc(h.name)+'</h2>'
+    + '<p class="sub">'+esc(h.amphur||'')+(h.short ? ' · '+esc(h.short) : '')
+      + (userPos ? ' · ห่าง '+km(userPos,h).toFixed(1)+' กม.' : '')+'</p>'
+    + '<div class="sumcard" style="margin:0 0 12px">'
+      + '<div class="sdots"><span class="sdot"><i style="background:'+(OPS_LEVELS[st.status]||OPS_LEVELS[0]).color+'"></i>'
+      + (OPS_LEVELS[st.status]||OPS_LEVELS[0]).label+'</span></div>'
+      + (st.note ? '<div class="note" style="font-size:13px;margin-top:6px">'+esc(st.note)+'</div>' : '')
+      + '<div class="m" style="margin-top:5px">'+agoOps(st.updatedAt)+(st.by ? ' · '+esc(st.by) : '')+'</div>'
+    + '</div>'
+    + '<fieldset><legend>สถานะการส่งต่อ</legend>'
+      + [1,2,3].map(v => '<label class="opt" style="--c:'+OPS_LEVELS[v].color+'"><input type="radio" name="hs" value="'+v+'"'+(st.status===v?' checked':'')+'><span><b>'+OPS_LEVELS[v].label+'</b><small>'+['ส่งต่อได้ตามปกติ','ส่งต่อได้แต่ต้องระวังเส้นทาง','ติดขัด ติดต่อไม่ได้หรือส่งต่อไม่ได้'][v-1]+'</small></span></label>').join('')
+    + '</fieldset>'
+    + '<label class="f">สาเหตุ / ประเภทเหตุการณ์'
+      + '<select id="hInc">'+['ไม่ระบุ'].concat(INCIDENTS).map(i => '<option'+(st.incident===i?' selected':'')+'>'+i+'</option>').join('')+'</select>'
+    + '</label>'
+    + '<label class="f">หมายเหตุ'
+      + '<textarea id="hNote" rows="2" maxlength="300" placeholder="เช่น มีน้ำท่วมขังถนนหน้า รพ. ลึก 30 ซม.">'+esc(st.note||'')+'</textarea>'
+    + '</label>'
+    + '<label class="f">ชื่อผู้อัปเดต<input id="hBy" maxlength="40" value="'+esc(profile.name||'')+'"></label>'
+    + '<div class="grp"><h3>ตำแหน่งบนแผนที่</h3>'
+      + '<p class="sub" style="margin:0 0 8px">พิกัด: '+h.lat.toFixed(5)+', '+h.lng.toFixed(5)
+        + (h.approx && !hospitalEdits[h.id] ? ' (คาดประมาณระดับอำเภอ — กด "จัดหมุดใหม่" เพื่อปักตำแหน่งจริง)' : '')+'</p>'
+      + '<div class="row" style="justify-content:flex-start">'
+        + '<button class="btn sm" type="button" id="hMove">จัดหมุดใหม่</button>'
+        + (h.phone ? '<a class="btn sm" href="tel:'+esc(h.phone)+'">โทร '+esc(h.phone)+'</a>' : '')
+      + '</div>'
+    + '</div>'
+    + (hist.length ? '<div class="grp"><h3>ประวัติการเปลี่ยนสถานะ</h3>'
+        + hist.slice(0,8).map(x => '<div class="tl-item"><span class="lvl" style="background:'+OPS_LEVELS[x.status].color+'"></span>'
+          + '<div><div style="font-size:13px">'+esc(x.note||OPS_LEVELS[x.status].label)+'</div>'
+          + '<div class="when">'+agoOps(x.updatedAt)+' · '+esc(x.by||'ไม่ระบุ')+(x.incident?' · '+esc(x.incident):'')+'</div></div></div>').join('')
+      + '</div>' : '')
+    + '<div class="row">'
+      + '<button class="btn" type="button" data-close="dlgHosp">ปิด</button>'
+      + '<button class="btn primary" type="submit"'+(focusStatus?' autofocus':'')+'>บันทึกสถานะ</button>'
+    + '</div>'
+  + '</form>';
+  $('#frmHosp').addEventListener('submit', e => {
+    e.preventDefault();
+    const level = +($('#frmHosp input[name=hs]:checked') || {}).value;
+    if (!level){ toast('เลือกสถานะด้วยครับ',''); return; }
+    const before = hospStatus(id).status;
+    const nm = $('#hBy').value.trim();
+    if (nm && nm !== profile.name){ profile.name = nm; jsave(KEY_IDENT, profile); }
+    setOpsStatus('hospital', id, level, $('#hNote').value, $('#hInc').value);
+    $('#dlgHosp').close();
+    renderRefer(); renderHospLayer(); renderTabs();
+    if (level !== before && level >= 2) alertHospChange(id, level, before);
+    else toast('บันทึกสถานะแล้ว', hospById(id).name);
+  });
+  $('#hMove').onclick = () => { $('#dlgHosp').close(); startHospMove(id); };
+  $('#dlgHosp').querySelector('[data-close]').onclick = () => $('#dlgHosp').close();
+  dlg.showModal();
+}
+
+function openHospManage(){
+  const dlg = $('#dlgHospManage');
+  dlg.innerHTML = '<form method="dialog" id="frmHM">'
+    + '<h2>จัดการรายชื่อและพิกัดโรงพยาบาล</h2>'
+    + '<p class="sub">ชื่อ/พิกัดที่แก้จะถูกบันทึกทับค่าที่มาพร้อมแอป (ยังไม่กระทบไฟล์ต้นฉบับ)</p>'
+    + '<ul class="elist" style="padding:0">' + hospitals().map(h => {
+        const st = hospStatus(h.id);
+        const lv = OPS_LEVELS[st.status] || OPS_LEVELS[0];
+        const edited = !!hospitalEdits[h.id];
+        return '<li data-mh="'+esc(h.id)+'"><span class="lvl" style="background:'+lv.color+'"></span>'
+          + '<div class="em"><div class="nm">'+esc(h.name)+'</div>'
+          + '<div class="sub">'+esc(h.short||'')+' · '+esc(h.amphur||'')+' · '+h.lat.toFixed(4)+', '+h.lng.toFixed(4)
+          + (h.approx && !edited ? ' <span class="tag amb">คาดประมาณ</span>' : (edited ? ' <span class="tag">แก้แล้ว</span>' : ''))
+          + '</div></div>'
+          + '<button class="go" type="button" data-hedit="'+esc(h.id)+'">แก้ไข</button></li>';
+      }).join('') + '</ul>'
+    + '<div class="row">'
+      + '<button class="btn" type="button" id="hmAdd">+ เพิ่มสถานพยาบาล</button>'
+      + '<button class="btn" type="button" data-close="dlgHospManage">ปิด</button>'
+    + '</div>'
+  + '</form>';
+  $('#dlgHospManage').querySelectorAll('[data-hedit]').forEach(b => b.onclick = () => {
+    $('#dlgHospManage').close();
+    openHospEdit(b.dataset.hedit);
+  });
+  $('#hmAdd').onclick = () => { $('#dlgHospManage').close(); openHospEdit(null); };
+  $('#dlgHospManage').querySelector('[data-close]').onclick = () => $('#dlgHospManage').close();
+  dlg.showModal();
+}
+let hospEditState = {id:null, picked:null, marker:null};
+function closeHospEditMarker(){
+  if (hospEditState.marker){ try{ hospEditState.marker.close(); }catch(e){} hospEditState.marker = null; }
+}
+function openHospEdit(id, pickedOverride){
+  const isNew = !id;
+  const base = isNew
+    ? {id:'', name:'', short:'', amphur:'', phone:'', lat:AREA.center.lat, lng:AREA.center.lng, approx:true}
+    : hospById(id);
+  if (!base) return;
+  // พิกัดที่จัดหมุดไว้ผูกกับแห่งนั้นเท่านั้น — กันพิกัดค้างจากแห่งก่อนหน้า
+  if (hospEditState.id !== id) hospEditState.picked = null;
+  if (pickedOverride) hospEditState.picked = pickedOverride;
+  if (!hospEditState.picked) hospEditState.picked = {lat:base.lat, lng:base.lng};
+  if (!isNew) hospEditState.id = id;
+  const picked = hospEditState.picked;
+  const dlg = $('#dlgHospEdit');
+  dlg.innerHTML = '<form method="dialog" id="frmHE">'
+    + '<h2>' + (isNew ? 'เพิ่มสถานพยาบาล' : 'แก้ไขสถานพยาบาล') + '</h2>'
+    + '<label class="f">ชื่อเต็ม<input id="heName" required maxlength="90" value="'+esc(base.name||'')+'"></label>'
+    + '<label class="f">ชื่อย่อ<input id="heShort" maxlength="30" value="'+esc(base.short||'')+'" placeholder="เช่น รพช.ท่าม่วง"></label>'
+    + '<label class="f">อำเภอ / ตำบล<input id="heAmphur" maxlength="60" value="'+esc(base.amphur||'')+'"></label>'
+    + '<label class="f">เบอร์โทร (ถ้ามี)<input id="hePhone" maxlength="20" value="'+esc(base.phone||'')+'"></label>'
+    + '<div class="grp"><h3>ตำแหน่ง</h3>'
+    + '<p class="sub" style="margin:0 0 8px">พิกัดปัจจุบัน: '+picked.lat.toFixed(5)+', '+picked.lng.toFixed(5)
+    + (base.approx && !hospitalEdits[hospEditState.id] ? ' — เป็นพิกัดคาดประมาณระดับอำเภอ ควรจัดหมุดใหม่' : '')
+    + '</p>'
+    + '<div class="row" style="justify-content:flex-start">'
+    + '<button class="btn sm" type="button" id="hePick">จัดหมุดบนแผนที่</button></div></div>'
+    + '<div class="row">'
+    + (isNew ? '' : '<button class="btn danger" type="button" id="heDel">ซ่อนแห่งนี้</button>')
+    + '<button class="btn" type="button" id="heCancel">ยกเลิก</button>'
+    + '<button class="btn primary" type="submit">บันทึก</button>'
+    + '</div>'
+  + '</form>';
+
+  $('#hePick').onclick = () => {
+    dlg.close();
+    closeHospEditMarker();
+    hospEditState.marker = addSimpleMarker(picked.lat, picked.lng,
+      '<svg width="20" height="20" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#d99a00" stroke="#fff" stroke-width="2"/></svg>',
+      'กำลังจัดหมุด', null);
+    startPick();
+    const useMe5 = $('#btnUseMe'); if (useMe5) useMe5.hidden = true;
+    $('#hint').querySelector('span').textContent = 'แตะตำแหน่งจริงของโรงพยาบาลบนแผนที่';
+    pickHook = pos => {
+      closeHospEditMarker();
+      hospEditState.picked = {lat:+pos.lat.toFixed(5), lng:+pos.lng.toFixed(5)};
+      hospEditState.marker = addSimpleMarker(hospEditState.picked.lat, hospEditState.picked.lng,
+        '<svg width="20" height="20" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#2f9e5e" stroke="#fff" stroke-width="2"/></svg>',
+        'ตำแหน่งใหม่', null);
+      if (mapApi) mapApi.flyTo(pos.lat, pos.lng, 14);
+      openHospEdit(isNew ? null : hospEditState.id);
+    };
+  };
+  $('#heCancel').onclick = () => { dlg.close(); };
+  // ปิดด้วย Escape หรือทางอื่นก็ต้องล้าง state ไม่ให้พิกัดของแห่งก่อนหน้าค้างไว้
+  if (!dlg.dataset.cleanupBound){
+    dlg.dataset.cleanupBound = '1';
+    dlg.addEventListener('close', () => {
+      if (dlg.open) return;
+      closeHospEditMarker();
+      hospEditState = {id:null, picked:null, marker:null};
+    });
+  }
+  $('#frmHE').addEventListener('submit', e => {
+    e.preventDefault();
+    const name = $('#heName').value.trim().slice(0,90);
+    if (!name){ toast('ใส่ชื่อโรงพยาบาลด้วย',''); return; }
+    const patch = {name, short:$('#heShort').value.trim().slice(0,30),
+                   amphur:$('#heAmphur').value.trim().slice(0,60),
+                   phone:$('#hePhone').value.trim().slice(0,20),
+                   lat:picked.lat, lng:picked.lng, approx:false};
+    if (isNew){
+      hospitalAdded.push(Object.assign({id:'hc' + Date.now().toString(36)}, patch));
+    }else{
+      hospitalEdits[hospEditState.id] = Object.assign({}, hospitalEdits[hospEditState.id], patch);
+    }
+    saveOps();
+    closeHospEditMarker();
+    hospEditState = {id:null, picked:null, marker:null};
+    dlg.close();
+    renderRefer(); renderHospLayer(); renderTabs();
+    toast('บันทึกแล้ว', name);
+  });
+  const del = $('#heDel');
+  if (del) del.onclick = () => {
+    if (!confirm('ซ่อน "' + base.name + '" ออกจากรายการ?\n(สถานะและประวัติที่บันทึกไว้จะยังอยู่)')) return;
+    if (hospitalAdded.some(x => x.id === hospEditState.id)){
+      hospitalAdded = hospitalAdded.filter(x => x.id !== hospEditState.id);
+    }else if (!hospitalRemoved.includes(hospEditState.id)){
+      hospitalRemoved.push(hospEditState.id);
+    }
+    saveOps();
+    closeHospEditMarker();
+    hospEditState = {id:null, picked:null, marker:null};
+    dlg.close();
+    renderRefer(); renderHospLayer(); renderTabs();
+    toast('ซ่อนแล้ว', base.name);
+  };
+  dlg.showModal();
+}
+
+function alertHospChange(id, level, before){
+  const h = hospById(id); if (!h) return;
+  const lv = OPS_LEVELS[level];
+  const why = settings.followHosp.includes(id) ? 'ติดตามอยู่'
+    : (userPos && km(userPos, h) <= 30 ? 'ห่างคุณ ' + km(userPos, h).toFixed(0) + ' กม.' : '');
+  if (!why) return;
+  pushAlert('สถานะ refer: ' + h.name, lv.label + ' (' + why + ')', lv.color, null, null);
 }
 
 function renderChips(){
@@ -1537,11 +2655,20 @@ function renderTabs(){
   $('#paneSpots').hidden = view !== 'spots';
   $('#paneFeed').hidden  = view !== 'feed';
   $('#paneSpot').hidden  = !inDetail;
-  const spotsOn = view === 'spots' || (inDetail && lastFocus === 'spots');
-  $('#tabSpots').setAttribute('aria-selected', String(spotsOn));
-  $('#tabFeed').setAttribute('aria-selected',  String(!spotsOn));
+  $('#paneRefer').hidden = view !== 'refer';
+  $('#paneRoads').hidden = view !== 'roads';
+  const base = inDetail ? lastFocus : view;
+  $('#tabSpots').setAttribute('aria-selected', String(base === 'spots'));
+  $('#tabFeed').setAttribute('aria-selected',  String(base === 'feed'));
+  $('#tabRefer').setAttribute('aria-selected', String(base === 'refer'));
+  $('#tabRoads').setAttribute('aria-selected', String(base === 'roads'));
   $('#nSpots').textContent = active().length;
   $('#nFeed').textContent  = allPosts().length;
+  const bad = hospitals().filter(h => hospStatus(h.id).status === 3).length;
+  const warn = hospitals().filter(h => hospStatus(h.id).status === 2).length;
+  $('#nRefer').textContent = bad ? ('🔴' + bad) : (warn ? ('🟡' + warn) : hospitals().length);
+  const rbad = Object.values(opsRoadStatus).filter(v => v.status === 3).length;
+  $('#nRoads').textContent = rbad ? ('🔴' + rbad) : '0';
 }
 
 function permState(){
@@ -1576,11 +2703,14 @@ function photosOfAll(){ return reports.flatMap(photosOf); }
 function render(){
   if (view === 'spots') renderList();
   else if (view === 'feed') renderFeed();
+  else if (view === 'refer') renderRefer();
+  else if (view === 'roads') renderRoads();
   else renderDetail();
   renderChips();
   renderAlert();
   renderUser();
   renderMap();
+  renderHospLayer();
   renderTabs();
   renderAlertsUI();
   renderFoot();
@@ -1678,13 +2808,22 @@ function onIncoming(next, prev){
 ============================================================ */
 function startPick(){
   picking = true;
+  closeHospEditMarker();
   $('#hint').classList.add('on');
   $('#map').classList.add('picking');
+  const useMe = $('#btnUseMe');
+  if (useMe) useMe.hidden = false;
 }
 function stopPick(){
   picking = false;
+  movingHosp = null;
+  pickHook = null;
   $('#hint').classList.remove('on');
   $('#map').classList.remove('picking');
+  const span = $('#hint').querySelector('span');
+  if (span) span.textContent = 'แตะบนแผนที่ตรงจุดที่น้ำท่วม';
+  const useMe = $('#btnUseMe');
+  if (useMe) useMe.hidden = false;
 }
 function openDetail(id){
   if (!byId(id)) return;
@@ -1913,10 +3052,18 @@ $('#lbP').onclick = () => lbStep(-1);
 $('#lbN').onclick = () => lbStep(1);
 $('#lightbox').onclick = e => { if (e.target.id === 'lightbox') closeLightbox(); };
 document.addEventListener('keydown', e => {
-  if (!$('#lightbox').classList.contains('on')) return;
-  if (e.key === 'Escape') closeLightbox();
-  else if (e.key === 'ArrowLeft') lbStep(-1);
-  else if (e.key === 'ArrowRight') lbStep(1);
+  if ($('#lightbox').classList.contains('on')){
+    if (e.key === 'Escape') closeLightbox();
+    else if (e.key === 'ArrowLeft') lbStep(-1);
+    else if (e.key === 'ArrowRight') lbStep(1);
+    return;
+  }
+  // Escape ระหว่างเลือกพิกัด (รายงานน้ำท่วม / จัดหมุดโรงพยาบาล)
+  if (e.key === 'Escape' && picking){
+    closeHospEditMarker();
+    stopPick();
+    toast('ยกเลิกแล้ว', '');
+  }
 });
 
 /* ============================================================
@@ -2000,6 +3147,31 @@ $('#minLevel').onchange = e => {
 /* แท็บ */
 $('#tabSpots').onclick = () => { view = 'spots'; activeId = null; lastFocus = 'spots'; resetComposer(); render(); };
 $('#tabFeed').onclick  = () => { view = 'feed';  activeId = null; lastFocus = 'feed';  resetComposer(); render(); };
+$('#tabRefer').onclick = () => { view = 'refer'; activeId = null; lastFocus = 'refer'; resetComposer(); render(); };
+$('#tabRoads').onclick = () => { view = 'roads'; activeId = null; lastFocus = 'roads'; resetComposer(); render(); };
+
+/* สวิตช์ชั้นข้อมูลบนแผนที่ */
+$('#lyHosp').onchange = e => { showHosp = e.target.checked; renderHospLayer(); renderRefer(); };
+$('#lyRoads').onchange = async e => {
+  showRoads = e.target.checked;
+  if (showRoads){
+    const net = await ensureRoadNet();
+    if (net) toast('โหลดข้อมูลถนนแล้ว', roadRefs.length + ' เลขทางหลวง — เก็บไว้ในเครื่อง เปิดครั้งต่อไปไม่ต้องโหลดซ้ำ');
+  }
+  drawRoadLayer();
+  renderRoads();
+};
+
+/* ปุ่มในแท็บถนน */
+$('#btnRoute').onclick = async () => { await ensureRoadNet(); openRouteDialog(); };
+$('#btnRoadReload').onclick = async () => {
+  const net = await ensureRoadNet(true);
+  if (net){
+    drawRoadLayer(); renderRoads(); renderTabs();
+    toast('รีเฟรชข้อมูลถนนแล้ว', roadRefs.length + ' เลขทางหลวง · ' + roadNet.ways.length + ' ช่วง');
+  }
+};
+$('#roadSearch').addEventListener('input', e => { roadQuery = e.target.value; renderRoads(); });
 
 /* ============================================================
    ตั้งค่า
@@ -2195,7 +3367,13 @@ setInterval(() => { if (view === 'spots' || view === 'feed') render(); }, 60000)
   profile.phone = String(ident.phone || '');
   profile.hidePhone = !!ident.hidePhone;
 
-  const st = jload(KEY_SET, null);
+  const st0 = jload(KEY_SET, null);
+  loadOps();
+  settings.followHosp = Array.isArray(st0 && st0.followHosp) ? st0.followHosp.filter(String).slice(0,100) : [];
+  $('#lyHosp').checked = false;
+  $('#lyRoads').checked = false;
+
+  const st = st0;
   if (st){
     settings.notifyOn = !!st.notifyOn;
     settings.sound = st.sound !== false;

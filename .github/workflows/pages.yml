@@ -25,10 +25,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: ตรวจว่าไฟล์พร้อม deploy
+      # actions/upload-pages-artifact ไม่มีอินพุต exclude
+      # จึงต้องเลือกเฉพาะไฟล์เว็บที่ต้องการไปยัง _site ก่อน
+      - name: เตรียมไฟล์เว็บ
         run: |
-          test -f index.html || { echo "ไม่พบ index.html"; exit 1; }
-          echo "พบ index.html แล้ว ($(wc -c < index.html) bytes)"
+          set -e
+          rm -rf _site
+          mkdir -p _site
+          cp index.html .nojekyll _site/
+          test -f _site/index.html || { echo "ไม่พบ index.html"; exit 1; }
+          echo "เตรียมไฟล์แล้ว: $(ls _site | tr '\n' ' ') ($(wc -c < _site/index.html) bytes)"
 
       - name: ตั้งค่า Pages
         uses: actions/configure-pages@v5
@@ -36,13 +42,7 @@ jobs:
       - name: อัปโหลดไฟล์เว็บไปยัง artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
-          # ไม่ต้องขนไฟล์ที่ไม่เกี่ยวกับเว็บไปด้วย
-          !.git
-          !node_modules
-          !test-*.js
-          !package.json
-          !package-lock.json
+          path: _site
 
       - name: deploy ขึ้น GitHub Pages
         id: deployment

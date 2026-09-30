@@ -20,3 +20,6 @@ Thumbs.db
 # Node (ถ้าใครเอาไปรันเครื่องมือ)
 node_modules/
 npm-debug.log*
+
+# โฟลเดอร์ชั่วคราวที่ GitHub Actions สร้างตอน deploy
+_site/

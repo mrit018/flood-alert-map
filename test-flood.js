@@ -306,7 +306,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   const blob = new window.Blob([PNG], { type: 'image/png' });
   const PH = 'phototest1';
   await new Promise((res, rej) => {
-    const rq = window.indexedDB.open('floodwatch-media', 1);
+    const rq = window.indexedDB.open('floodwatch-media', 2);
     rq.onupgradeneeded = () => {
       const d = rq.result;
       if (!d.objectStoreNames.contains('photos')) d.createObjectStore('photos', { keyPath: 'id' });
@@ -366,7 +366,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   click($('#detail [data-act="delete"]'));
   await wait(400);
   const orphan = await new Promise(res => {
-    const rq = window.indexedDB.open('floodwatch-media', 1);
+    const rq = window.indexedDB.open('floodwatch-media', 2);
     rq.onsuccess = () => {
       const t = rq.result.transaction('photos', 'readonly');
       const g = t.objectStore('photos').get(PH);
@@ -400,7 +400,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok('import keeps post author + phone',
      JSON.stringify(afterImport.find(r => r.id === 'imp1').posts[0].author) === JSON.stringify({ name: 'ผู้นำเข้า', phone: '089-000-1111' }));
   const impPhoto = await new Promise(res => {
-    const rq = window.indexedDB.open('floodwatch-media', 1);
+    const rq = window.indexedDB.open('floodwatch-media', 2);
     rq.onsuccess = () => {
       const g = rq.result.transaction('photos', 'readonly').objectStore('photos').get('impph1');
       g.onsuccess = () => res(g.result ? { found: true, type: g.result.blob && g.result.blob.type, keys: g.result.blob ? Object.keys(g.result.blob).length : -1 } : { found: false });
