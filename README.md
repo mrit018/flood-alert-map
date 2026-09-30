@@ -4,20 +4,36 @@
 
 ไฟล์เดียวจบ เปิดใช้งานได้เลย ไม่ต้องติดตั้งอะไร ไม่ต้อง build
 
-## เปิดใช้งาน
+🌐 **เว็บออนไลน์:** <https://mrit018.github.io/flood-alert-map/>
+
+## เปิดใช้งานแบบออนไลน์ (GitHub Pages)
+
+push เข้า `main` แล้วเว็บจะอัปเดตอัตโนมัติ ใช้เวลาไม่กี่นาที
+
+เปิดใช้งานครั้งแรก (ทำครั้งเดียว) — ต้องล็อกอินเป็นเจ้าของ repo:
+
+1. ไปที่ https://github.com/mrit018/flood-alert-map/settings/pages
+2. หัวข้อ **Build and deployment** → **Source** เลือก **GitHub Actions**
+3. กด Save
+
+workflow จะ deploy อัตโนมัติทุกครั้งที่ push
+
+## เปิดใช้งานแบบในเครื่อง
 
 ```bash
-open flood-alert-map.html
+open index.html
 ```
 
-หรือเสิร์ฟผ่าน HTTP (แนะนำ เพราะ Geolocation บางเบราว์เซอร์จะปฏิเสธบน `file://` และ Google Maps ต้องการ origin จริง):
+หรือเสิร์ฟผ่าน HTTP (แนะนำ — Geolocation บางเบราว์เซอร์จะปฏิเสธบน `file://` และ Google Maps ต้องการ origin จริง):
 
 ```bash
 python3 -m http.server 8000
-# แล้วเปิด http://localhost:8000/flood-alert-map.html
+# แล้วเปิด http://localhost:8000/
 ```
 
-> `python3 -m http.server` จะเสิร์ฟทั้งโฟลเดอร์รวมถึง `.git/` — เห็นไฟล์ประวัติ git ได้ แต่ไม่มีข้อมูลลับ ถ้าอยากจำกัดขอบเขตให้ดูหัวข้อ "เสิร์ฟแบบปลอดภัย" ท้ายไฟล์
+> `python3 -m http.server` จะเสิร์ฟทั้งโฟลเดอร์รวมถึง `.git/` — เห็นไฟล์ประวัติ git ได้ ถ้าอยากจำกัดขอบเขตให้ดูหัวข้อ "เสิร์ฟแบบปลอดภัย" ท้ายไฟล์
+
+`flood-alert-map.html` เป็นไฟล์ redirect ไปที่ `index.html` — คงไว้เพื่อให้ลิงก์เก่ายังใช้ได้
 
 ## เขตพื้นที่
 
@@ -53,6 +69,14 @@ python3 -m http.server 8000
 key ถูกเก็บใน `localStorage` ของเบราว์เซอร์เครื่องนั้นเท่านั้น **ไม่ได้ฝังในไฟล์** และไม่หลุดไปกับการส่งออก/นำเข้าข้อมูล
 
 > ถ้าไม่อยากสมัคร Billing ให้ใช้ OpenStreetMap ไปก่อน ไม่มีอะไรขาด
+
+### ⚠️ อย่าฝัง key ลงในไฟล์ HTML
+
+เว็บบน GitHub Pages เปิดสาธารณะ **ถ้าฝัง key ลงใน `index.html` ใครก็ scrape ไปใช้ได้** แล้วโดนเรียกเกินโควตา — ค่าใช้จ่ายไปที่บัญชีของคุณ
+
+แอปนี้อ่าน key จาก `localStorage` ของผู้ใช้แต่ละคน แปลว่า**เว็บที่ deploy ไปไม่มี key ฝังอยู่เลย** ทุกคนที่เปิดจะได้ OpenStreetMap ไปก่อน แล้วค่อยใส่ key ของตัวเองถ้าอยากได้ Google Maps
+
+ถ้าจำเป็นต้องมี key กลางสำหรับทุกคน ให้ใช้ key ที่**จำกัด referrer** เป็นโดเมนของ Pages และ**จำกัดโควตา**ไว้ใน Google Cloud Console ทุกครั้ง
 
 ## ฟีเจอร์
 
@@ -159,6 +183,8 @@ node test-flood.js       # ฟีเจอร์หลัก 90 เคส
 node test-regress.js     # บั๊ก 14 จุดที่เคยเจอ 39 เคส
 ```
 
+เทสต์อ่านไฟล์ `index.html` โดยตรง จึงทดสอบได้โดยไม่ต้องเปิดเบราว์เซอร์
+
 ## เสิร์ฟแบบปลอดภัย (ไม่เปิด `.git/`)
 
 `python3 -m http.server` เสิร์ฟทุกไฟล์ในโฟลเดอร์ รวม `.git/` ถ้าอยากจำกัดขอบเขต:
@@ -170,7 +196,8 @@ class H(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith('/.git') or self.path.startswith('/test-'):
             self.send_error(404); return
-        self.path = '/flood-alert-map.html'
+        if self.path in ('/', '/index.html'):
+            self.path = '/index.html'
         return super().do_GET()
 socketserver.TCPServer.allow_reuse_address = True
 with socketserver.TCPServer(('', 8000), H) as s: s.serve_forever()

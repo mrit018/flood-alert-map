@@ -3,7 +3,7 @@ const { JSDOM, VirtualConsole } = require('jsdom');
 require('fake-indexeddb/auto');
 const fdb = require('fake-indexeddb');
 
-const FILE = '/Users/macbookpro/Projects/flood-alert-map/flood-alert-map.html';
+const FILE = '/Users/macbookpro/Projects/flood-alert-map/index.html';
 let html = fs.readFileSync(FILE, 'utf8');
 const errors = [];
 const vc = new VirtualConsole();

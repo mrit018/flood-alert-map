@@ -1,0 +1,49 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# ให้สิทธิ์เขียนเฉพาะตอน deploy เท่านั้น
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# ยกเลิกการ deploy ค้างจากรอบก่อนหน้า ถ้ามีรอบใหม่เข้ามา
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ตรวจว่าไฟล์พร้อม deploy
+        run: |
+          test -f index.html || { echo "ไม่พบ index.html"; exit 1; }
+          echo "พบ index.html แล้ว ($(wc -c < index.html) bytes)"
+
+      - name: ตั้งค่า Pages
+        uses: actions/configure-pages@v5
+
+      - name: อัปโหลดไฟล์เว็บไปยัง artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+          # ไม่ต้องขนไฟล์ที่ไม่เกี่ยวกับเว็บไปด้วย
+          !.git
+          !node_modules
+          !test-*.js
+          !package.json
+          !package-lock.json
+
+      - name: deploy ขึ้น GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
