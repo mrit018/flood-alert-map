@@ -100,6 +100,20 @@ const ops = () => JSON.parse(w.localStorage.getItem('floodwatch.ops.v1') || '{}'
   ok('รพช.ท่าม่วง อยู่ในรายการ (สมเด็จฯ19 คือแห่งเดียวกัน)',
      $('#referBox') && /ท่าม่วง/.test($('#referBox').innerHTML) === false || true);
 
+  /* ---------- checkbox เปิดค้างไว้เลย (ตามที่ผู้ใช้ต้องการ) ---------- */
+  // ตรวจตอนเริ่มแรก ก่อนมีการแตะสวิตช์ใด ๆ ในเทสต์
+  ok('ชั้นโรงพยาบาลเปิดไว้ตั้งแต่แรก', $('#lyHosp').checked === true, 'checked=' + $('#lyHosp').checked);
+  ok('ชั้นถนนเปิดไว้ตั้งแต่แรก', $('#lyRoads').checked === true, 'checked=' + $('#lyRoads').checked);
+  // ตอนเปิดหน้าใหม่ยังไม่มีการเขียน settings ลง storage (ผู้ใช้ยังไม่แตะอะไร)
+  // ค่าเริ่มต้นจึงต้องมาจากโค้ด — ตรวจว่าเป็น "เปิด" และใช้ !== false เพื่อให้ของเก่าที่ไม่มีคีย์นี้ยังเปิด
+  const src = fs.readFileSync(FILE, 'utf8');
+  ok('ค่าเริ่มต้นในโค้ดคือเปิดทั้งชั้นโรงพยาบาลและถนน',
+     /lyHosp:true/.test(src) && /lyRoads:true/.test(src));
+  ok('ใช้ "!== false" เพื่อให้ settings เก่าที่ไม่มีคีย์นี้ยังเปิดอยู่',
+     /settings\.lyHosp\s*!== false/.test(src) && /settings\.lyRoads\s*!== false/.test(src));
+  ok('ตอนเปิดหน้าใหม่ยังไม่เขียน settings ใหม่ทับของเดิม',
+     !('lyHosp' in JSON.parse(w.localStorage.getItem('floodwatch.settings.v1') || '{}')));
+
   click($('#tabRefer'));
   await wait(150);
   ok('คลิกแท็บ refer แล้วพาเนย์แสดง', $('#paneRefer').hidden === false);
@@ -207,7 +221,27 @@ const ops = () => JSON.parse(w.localStorage.getItem('floodwatch.ops.v1') || '{}'
   click($('#tabRoads'));
   await wait(150);
   ok('เปิดแท็บถนนได้', $('#paneRoads').hidden === false);
-  ok('ยังไม่มีข้อมูลถนนต้องขึ้นว่ารอโหลด', /ยังไม่ได้ดึงข้อมูล/.test($('#roadBox').textContent));
+
+  /* ---------- ชั้นข้อมูลโหลดอัตโนมัติ + จำสถานะ checkbox ---------- */
+  await wait(1200);
+  ok('ข้อมูลถนนโหลดอัตโนมัติโดยไม่ต้องกดปุ่ม', /พร้อม/.test($('#roadBox').textContent),
+     $('#roadBox').textContent.replace(/\s+/g,' ').slice(0,90));
+  ok('รายการเลขทางหลวงขึ้นเอง 2 เส้น', $$('#roadList li[data-ref]').length === 2,
+     'n=' + $$('#roadList li[data-ref]').length);
+
+  // ปิดแล้วต้องจำว่าปิด
+  $('#lyRoads').checked = false;
+  $('#lyRoads').dispatchEvent(new w.Event('change', { bubbles:true }));
+  await wait(300);
+  ok('ผู้ใช้ปิดชั้นถนน -> จำว่าปิด', JSON.parse(w.localStorage.getItem('floodwatch.settings.v1')||'{}').lyRoads === false);
+  $('#lyHosp').checked = false;
+  $('#lyHosp').dispatchEvent(new w.Event('change', { bubbles:true }));
+  await wait(200);
+  ok('ผู้ใช้ปิดชั้นโรงพยาบาล -> จำว่าปิด', JSON.parse(w.localStorage.getItem('floodwatch.settings.v1')||'{}').lyHosp === false);
+  // เปิดกลับเพื่อให้เทสต์ถัดไปใช้ต่อได้
+  $('#lyHosp').checked = true; $('#lyHosp').dispatchEvent(new w.Event('change', { bubbles:true }));
+  $('#lyRoads').checked = true; $('#lyRoads').dispatchEvent(new w.Event('change', { bubbles:true }));
+  await wait(600);
 
   click($('#btnRoadReload'));
   await wait(900);
@@ -222,6 +256,8 @@ const ops = () => JSON.parse(w.localStorage.getItem('floodwatch.ops.v1') || '{}'
   ok('ดึงและแคชข้อมูลถนนลง IndexedDB', !!net && net.ways && net.ways.length === 2,
      net ? ('ways=' + net.ways.length + ' nodes=' + net.nodes.length) : 'ไม่มี');
   ok('เก็บพิกัดเป็นจำนวนเต็มประหยัดที่ (×1e5)', net && net.nodes[0][0] === 1400000, JSON.stringify(net && net.nodes[0]));
+  ok('ไม่ขึ้นข้อความ "รอโหลด" อีกแล้วเพราะโหลดให้เอง',
+     !/ยังไม่ได้ดึงข้อมูล/.test($('#roadBox').textContent), $('#roadBox').textContent.replace(/\s+/g,' ').slice(0,80));
   ok('รายการเลขทางหลวงขึ้น 2 เส้น', $$('#roadList li[data-ref]').length === 2, 'n=' + $$('#roadList li[data-ref]').length);
   ok('ค้นหาเลขทางหลวงได้', /ทางหลวงหมายเลข 323/.test($('#roadList').textContent));
 

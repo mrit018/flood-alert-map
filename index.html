@@ -618,7 +618,10 @@ const settings = {
   notifyOn:false, sound:true, minLevel:0,
   googleKey:'', mapId:'',
   follow:[],
-  followHosp:[]
+  followHosp:[],
+  // เปิดชั้นโรงพยาบาลและชั้นถนนไว้เลย และจดจำสถานะไว้
+  // (ถ้าผู้ใช้สั่งปิดเอง ให้จำไว้ว่าปิด ไม่ต้องเปิดกลับทุกครั้ง)
+  lyHosp:true, lyRoads:true
 };
 const profile = { name:'', phone:'', hidePhone:false };
 
@@ -1553,6 +1556,8 @@ function initMap(){
       else mapApi.flyTo(AREA.center.lat, AREA.center.lng, 10);
     }
     renderAlertsUI();
+    // คืนสถานะชั้นโรงพยาบาล/ชั้นถนนหลังแผนที่พร้อม (ถนนต้องมีแผนที่ถึงวาดได้)
+    applyLayerPrefs();
   })();
   return mapBooting;
 }
@@ -3324,17 +3329,55 @@ $('#tabFeed').onclick  = () => { view = 'feed';  activeId = null; lastFocus = 'f
 $('#tabRefer').onclick = () => { view = 'refer'; activeId = null; lastFocus = 'refer'; resetComposer(); render(); };
 $('#tabRoads').onclick = () => { view = 'roads'; activeId = null; lastFocus = 'roads'; resetComposer(); render(); };
 
-/* สวิตช์ชั้นข้อมูลบนแผนที่ */
-$('#lyHosp').onchange = e => { showHosp = e.target.checked; renderHospLayer(); renderRefer(); };
+/* สวิตช์ชั้นข้อมูลบนแผนที่ — จำสถานะไว้ เปิดหน้าใหม่แล้วยังเป็นแบบเดิม */
+$('#lyHosp').onchange = e => {
+  showHosp = e.target.checked;
+  settings.lyHosp = showHosp;
+  jsave(KEY_SET, Object.assign({}, settings, {radiusKm:radiusKm}));
+  renderHospLayer();
+  renderRefer();
+};
 $('#lyRoads').onchange = async e => {
   showRoads = e.target.checked;
+  settings.lyRoads = showRoads;
+  jsave(KEY_SET, Object.assign({}, settings, {radiusKm:radiusKm}));
   if (showRoads){
     const net = await ensureRoadNet();
-    if (net) toast('โหลดข้อมูลถนนแล้ว', roadRefs.length + ' เลขทางหลวง — เก็บไว้ในเครื่อง เปิดครั้งต่อไปไม่ต้องโหลดซ้ำ');
+    if (net && !roadDataNoteShown){
+      roadDataNoteShown = true;
+      jsave(KEY_DATA_NOTE, 1);
+      toast('โหลดข้อมูลถนนแล้ว', roadRefs.length + ' เลขทางหลวง — เก็บไว้ในเครื่องแล้ว เปิดครั้งต่อไปไม่ต้องโหลดซ้ำ');
+    }
   }
   drawRoadLayer();
   renderRoads();
 };
+
+/* คืนสถานะชั้นข้อมูลตอนเปิดเว็บ (ค่าเริ่มต้นคือเปิดทั้งคู่) */
+const KEY_DATA_NOTE = 'floodwatch.roaddata.note.v1';
+let roadDataNoteShown = false;
+function applyLayerPrefs(){
+  showHosp  = settings.lyHosp  !== false;
+  showRoads = settings.lyRoads !== false;
+  roadDataNoteShown = !!jload(KEY_DATA_NOTE, 0);
+  const h = $('#lyHosp'), r = $('#lyRoads');
+  if (h) h.checked = showHosp;
+  if (r) r.checked = showRoads;
+  renderHospLayer();
+  renderRefer();
+  if (showRoads && mapApi){
+    // ถ้าเคยโหลดไว้แล้วจะอ่านจากแคชทันที ไม่ต้องต่อเน็ต
+    ensureRoadNet().then(net => {
+      drawRoadLayer();
+      renderRoads();
+      if (net && !roadDataNoteShown){
+        roadDataNoteShown = true;
+        jsave(KEY_DATA_NOTE, 1);
+        toast('โหลดข้อมูลถนนแล้ว', roadRefs.length + ' เลขทางหลวง — เก็บไว้ในเครื่องแล้ว เปิดครั้งต่อไปไม่ต้องโหลดซ้ำ');
+      }
+    });
+  }
+}
 
 /* ปุ่มในแท็บถนน */
 $('#btnRoute').onclick = async () => { await ensureRoadNet(); openRouteDialog(); };
@@ -3570,8 +3613,6 @@ setInterval(() => { if (view === 'spots' || view === 'feed') render(); }, 60000)
   const st0 = jload(KEY_SET, null);
   loadOps();
   settings.followHosp = Array.isArray(st0 && st0.followHosp) ? st0.followHosp.filter(String).slice(0,100) : [];
-  $('#lyHosp').checked = false;
-  $('#lyRoads').checked = false;
 
   const st = st0;
   if (st){
@@ -3582,6 +3623,9 @@ setInterval(() => { if (view === 'spots' || view === 'feed') render(); }, 60000)
     settings.mapId = String(st.mapId || '').trim();
     settings.follow = Array.isArray(st.follow) ? st.follow.filter(String).slice(0, 300) : [];
     radiusKm = clamp(+st.radiusKm || 5, 1, 30);
+    // ถ้าเคยบันทึกสถานะสวิตช์ไว้ ใช้ค่านั้น ไม่งั้นใช้ค่าเริ่มต้น (เปิดทั้งคู่)
+    settings.lyHosp  = st.lyHosp  !== false;
+    settings.lyRoads = st.lyRoads !== false;
   }
 
   repPick = createPicker('rep');
