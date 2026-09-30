@@ -195,6 +195,21 @@ button{cursor:pointer}
               box-shadow:0 0 0 1px rgba(0,0,0,.12) inset}
 .tl-item .when{font-size:12px;color:var(--ink-2)}
 
+/* แถบเตือนเรื่องพื้นที่เก็บข้อมูล */
+#storeWarn{margin:10px 20px 0;padding:11px 13px;border-radius:10px;
+           border:1px solid var(--lv3);border-left-width:6px;background:var(--card)}
+#storeWarn[hidden]{display:none}
+#storeWarn b{display:block;font-size:14px;color:var(--lv3)}
+#storeWarn .sw-sub{font-size:13px;color:var(--ink-2);margin-top:3px}
+.help-ol{margin:0;padding-left:20px;font-size:13.5px;line-height:1.65}
+.help-ol li{margin-bottom:9px}
+.help-ol b{color:var(--ink)}
+
+/* ปุ่มหลักบนมือถือ: แตะง่ายขึ้น */
+.btn.big{padding:13px 16px;font-size:16px;font-weight:600;border-radius:10px;width:100%}
+.map-dead{padding:18px;text-align:center;color:var(--ink-2);font-size:14px;line-height:1.7}
+.map-dead b{display:block;color:var(--lv3);font-size:15px;margin-bottom:6px}
+
 #lightbox{position:absolute;inset:0;z-index:900;background:rgba(6,14,19,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px}
 #lightbox.on{display:flex}
 #lightbox img{max-width:100%;max-height:78%;object-fit:contain;border-radius:6px;background:#000}
@@ -270,6 +285,20 @@ label.f small,.f>small{font-weight:400;color:var(--ink-2);display:block;margin-t
   .actions,.ctrlbar,.radius,.chips,#list,.feed,.detail,.tabs,.foot{padding-left:16px;padding-right:16px}
   dialog form{padding:16px}
   .grp{margin:4px -16px 12px;padding:14px 16px 0}
+  #storeWarn{margin:10px 16px 0}
+  .sumcard,.rbar{margin-left:16px;margin-right:16px}
+  .elist,.search{padding-left:16px;padding-right:16px;width:auto;margin-left:0;margin-right:0}
+  /* มือถือ: แถบควบคุมด้านบนกินพื้นที่เยอะ ให้ซ่อนส่วนที่ไม่จำเป็นระหว่างเลื่อนดูรายการ */
+  .radius{display:none}
+  .head h1{font-size:17px}
+  .tab{padding:10px 9px 11px;font-size:14px}
+  .actions .btn{padding:12px 12px;font-size:15px}
+  label.f input,label.f textarea,label.f select{font-size:16px;padding:10px 12px}
+  .composer textarea{font-size:16px}
+  .search{font-size:16px}
+  .toast{font-size:14px}
+  dialog{max-height:calc(100% - 16px);width:calc(100% - 16px)}
+  dialog form{max-height:calc(100dvh - 16px)}
 }
 </style>
 </head>
@@ -287,6 +316,9 @@ label.f small,.f>small{font-weight:400;color:var(--ink-2);display:block;margin-t
     </div>
 
     <div id="alertBox" class="idle" role="status" aria-live="polite"></div>
+
+    <!-- แสดงเฉพาะเมื่อบันทึกข้อมูลไม่ได้ เช่น iPhone โหมดส่วนตัว หรือที่เก็บเต็ม -->
+    <div id="storeWarn" role="alert" hidden></div>
 
     <div class="actions">
       <button class="btn primary" id="btnReport">รายงานน้ำท่วม</button>
@@ -360,7 +392,7 @@ label.f small,.f>small{font-weight:400;color:var(--ink-2);display:block;margin-t
   <main id="mapwrap">
     <div id="map" aria-label="แผนที่จุดน้ำท่วม"></div>
     <div id="hint">
-      <span>แตะบนแผนที่ตรงจุดที่น้ำท่วม</span>
+      <span>แตะตำแหน่งที่น้ำท่วมบนแผนที่ เพื่อเปิดฟอร์มรายงาน</span>
       <button class="btn" id="btnUseMe">ใช้ตำแหน่งของฉัน</button>
       <button class="btn" id="btnCancelPick">ยกเลิก</button>
     </div>
@@ -455,6 +487,7 @@ label.f small,.f>small{font-weight:400;color:var(--ink-2);display:block;margin-t
   </form>
 </dialog>
 
+<dialog id="dlgStoreHelp"></dialog>
 <dialog id="dlgHosp"></dialog>
 <dialog id="dlgRoad"></dialog>
 <dialog id="dlgRoute"></dialog>
@@ -467,6 +500,14 @@ label.f small,.f>small{font-weight:400;color:var(--ink-2);display:block;margin-t
   <form method="dialog" id="frmSet">
     <h2>ตั้งค่า</h2>
     <p class="sub">ชื่อและเบอร์โทรจะถูกแนบไปกับทุกโพสต เพื่อให้คนอื่นติดต่อกลับได้</p>
+    <div class="grp"><h3>เพิ่มข้อมูลไม่ได้?</h3>
+      <p class="sub" style="margin:0 0 8px">ข้อมูลทั้งหมดเก็บในเครื่องนี้เท่านั้น ไม่ได้ส่งขึ้นเซิร์ฟเวอร์
+        ถ้าบันทึกไม่ได้ ให้ส่งออกข้อมูลเก็บไว้ก่อน แล้วค่อยแก้ที่เก็บข้อมูลของเบราว์เซอร์</p>
+      <div class="row" style="justify-content:flex-start">
+        <button class="btn sm" type="button" id="btnHelpSet">วิธีแก้เมื่อบันทึกไม่ได้</button>
+        <button class="btn sm" type="button" id="btnTestStore">ทดสอบที่เก็บข้อมูล</button>
+      </div>
+    </div>
     <label class="f">ชื่อที่แสดง
       <input id="sName" maxlength="40" placeholder="ชื่อเล่นหรือชื่อที่ใช้แสดงผล">
     </label>
@@ -653,8 +694,9 @@ function hospStatus(id){
   return {status:0, note:'', incident:'', updatedAt:0, by:''};
 }
 function saveOps(){
-  jsave(KEY_OPS, {edits:hospitalEdits, added:hospitalAdded, removed:hospitalRemoved,
-                  status:opsStatus, roads:opsRoadStatus, history:opsHistory.slice(-400)});
+  // คืน false เมื่อบันทึกไม่ได้ เพื่อให้ผู้เรียกแสดงข้อความว่า "ยังไม่บันทึกจริง"
+  return jsave(KEY_OPS, {edits:hospitalEdits, added:hospitalAdded, removed:hospitalRemoved,
+                         status:opsStatus, roads:opsRoadStatus, history:opsHistory.slice(-400)});
 }
 function loadOps(){
   const o = jload(KEY_OPS, null);
@@ -673,7 +715,7 @@ function setOpsStatus(kind, id, status, note, incident){
   else opsRoadStatus[id] = rec;
   opsHistory.push(Object.assign({id:uid(), kind:kind, targetId:id}, rec));
   if (opsHistory.length > 400) opsHistory = opsHistory.slice(-400);
-  saveOps();
+  return saveOps();      // false = บันทึกไม่ได้ ผู้เรียกต้องแจ้งผู้ใช้
 }
 function historyFor(kind, id){
   return opsHistory.filter(h => h.kind === kind && h.targetId === id)
@@ -999,8 +1041,89 @@ let repPick = null, postPick = null;
 function jload(k, fallback){
   try{ const raw = localStorage.getItem(k); return raw ? JSON.parse(raw) : fallback; }catch(e){ return fallback; }
 }
-function jsave(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
-function save(){ jsave(KEY, reports); }
+
+/* ข้อมูลบนมือถือหายง่ายมาก: iOS Safari ล้าง localStorage หลังไม่ได้เข้าเว็บ 7 วัน,
+   โหมดส่วนตัวไม่ยอมเขียนเลย, quota เต็มได้ง่าย
+   การกลืน error เงียบ ๆ เคยทำให้ผู้ใช้คิดว่าส่งสำเร็จทั้งที่ข้อมูลไม่ถูกบันทึก
+   -> ต้องรายงานความล้มเหลวออกมาให้ผู้ใช้เห็นเสมอ */
+let storeWarnMsg = '';
+let lastSaveErr = null;
+function isQuotaErr(e){
+  if (!e) return false;
+  return e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22 || e.code === 1014;
+}
+function jsave(k, v){
+  try{
+    localStorage.setItem(k, JSON.stringify(v));
+    lastSaveErr = null;
+    if (storeWarnMsg) storageProblem('');
+    return true;
+  }catch(e){
+    lastSaveErr = e;
+    storageProblem(isQuotaErr(e)
+      ? 'ที่เก็บข้อมูลของเบราว์เซอร์เต็ม — มักเกิดบน iPhone เมื่อมีข้อมูลสะสมเยอะ หรือเปิดในโหมดส่วนตัว'
+      : 'เบราว์เซอร์ไม่ยอมให้บันทึกข้อมูลลงเครื่อง (มักเกิดในโหมดส่วนตัว หรือเว็บที่ปิดการใช้งานคุกกี้)');
+    return false;
+  }
+}
+function save(){ return jsave(KEY, reports); }
+
+/* แถบเตือนเรื่องพื้นที่เก็บข้อมูล (อยู่ตลอดจนกว่าจะบันทึกสำเร็จ) */
+function storageProblem(msg){
+  if (storeWarnMsg === msg) return;
+  storeWarnMsg = msg;
+  const el = $('#storeWarn');
+  if (!el) return;
+  if (!msg){ el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  el.innerHTML = '<b>บันทึกข้อมูลไม่สำเร็จ</b>' + esc(msg)
+    + '<div class="sw-sub">ข้อมูลที่เพิ่งเพิ่มจะหายเมื่อปิดหน้านี้ — โปรดส่งออกข้อมูลเก็บไว้ก่อน</div>'
+    + '<div class="row" style="justify-content:flex-start;margin-top:8px">'
+    + '<button class="btn sm" type="button" id="btnStoreHelp">วิธีแก้</button>'
+    + '<button class="btn sm" type="button" id="btnStoreExport">ส่งออกข้อมูล</button></div>';
+  $('#btnStoreHelp').onclick = showStoreHelp;
+  const ex = $('#btnStoreExport');
+  if (ex) ex.onclick = () => doExport();
+}
+function showStoreHelp(){
+  const dlg = $('#dlgStoreHelp');
+  dlg.innerHTML = '<form method="dialog">'
+    + '<h2>ทำไมบันทึกไม่ได้</h2>'
+    + '<p class="sub">' + esc(storeWarnMsg) + '</p>'
+    + '<div class="grp"><h3>ลองตามลำดับนี้</h3>'
+    + '<ol class="help-ol">'
+    + '<li><b>ออกจากโหมดส่วนตัว</b> — ถ้าเปิดเว็บใน Private Browsing / Incognito ให้เปิดในหน้าต่างปกติก่อน</li>'
+    + '<li><b>iPhone: อย่าใช้โหมดไม่ติดตาม (Private Relay ไม่ใช่ปัญหา แต่ "แบบไม่ติดตาม" ของเบราว์เซอร์คือ)</b> '
+      + 'และ Safari จะล้าง localStorage อัตโนมัติถ้าไม่ได้เปิดเว็บนี้ 7 วัน — เปิดใช้บ่อย ๆ ไว้</li>'
+    + '<li><b>ล้างพื้นที่เก็บข้อมูลของเว็บ</b> — iOS: Settings → Safari → Advanced → Website Data → ลบชื่อเว็บนี้ '
+      + 'Android Chrome: ปรับเว็บไซต์ → ล้างข้อมูลเว็บไซต์ (ทำหลังกด "ส่งออกข้อมูล" แล้ว)</li>'
+    + '<li><b>ลดข้อมูลสะสม</b> — ลบรายงานที่ปิดเคสแล้วออกจากแท็บ "จุดน้ำท่วม"</li>'
+    + '</ol></div>'
+    + '<div class="row"><button class="btn primary" type="button" data-close="dlgStoreHelp">เข้าใจแล้ว</button></div>'
+  + '</form>';
+  dlg.querySelector('[data-close]').onclick = () => dlg.close();
+  dlg.showModal();
+}
+/* เรียกหลังบันทึกไม่สำเร็จ — คืน false ให้ผู้เรียกจัดการต่อเอง */
+function saveFailedHint(what){
+  toast('ยังบันทึกไม่ได้ — ข้อมูล' + what + 'ยังอยู่ในหน้านี้',
+        'แตะ "วิธีแก้" ที่แถบสีแดงด้านบน แล้วกดบันทึกอีกครั้ง (ถ้าปิดหน้านี้ข้อมูลจะหาย)', 'var(--lv3)');
+  return false;
+}
+/* ตรวจตั้งแต่ตอนเปิดเว็บ: ถ้าเขียนไม่ได้ตั้งแต่แรก ให้ผู้ใช้รู้ก่อนเสียข้อมูล */
+function checkStorageUsable(){
+  const probe = KEY + '.probe';
+  try{
+    localStorage.setItem(probe, '1');
+    localStorage.removeItem(probe);
+    return true;
+  }catch(e){
+    storageProblem(isQuotaErr(e)
+      ? 'ที่เก็บข้อมูลของเบราว์เซอร์เต็ม — เว็บนี้จะบันทึกรายงานไม่ได้เลยจนกว่าจะล้างข้อมูลเก่า'
+      : 'เบราว์เซอร์ไม่ยอมให้เว็บนี้บันทึกข้อมูล (น่าจะเปิดในโหมดส่วนตัว)');
+    return false;
+  }
+}
 
 function sanitizeReport(r){
   if (!r || !isFinite(+r.lat) || !isFinite(+r.lng) || !LEVELS[+r.level]) return null;
@@ -1397,7 +1520,10 @@ function initMap(){
       }catch(err){
         mapApiError = err.message || String(err);
         toast('เปิดแผนที่ไม่ได้', mapApiError);
-        el.innerHTML = '<div class="map-dead">เปิดแผนที่ไม่สำเร็จ<br><small>'+esc(mapApiError)+'</small></div>';
+        el.innerHTML = '<div class="map-dead"><b>เปิดแผนที่ไม่สำเร็จ</b>'
+          + esc(mapApiError)
+          + '<br>รายงานน้ำท่วมต้องแตะตำแหน่งบนแผนที่<br>'
+          + 'ตรวจการเชื่อมต่ออินเทอร์เน็ต แล้วรีเฟรชหน้านี้</div>';
       }
     }
     if (mapApi){
@@ -1711,9 +1837,10 @@ function openRoadDialog(ref, focus){
     opsHistory.push(Object.assign({id:uid(), kind:'road', targetId:key}, rec));
     const nm = $('#rdBy').value.trim();
     if (nm && nm !== profile.name){ profile.name = nm; jsave(KEY_IDENT, profile); }
-    saveOps();
-    $('#dlgRoad').close();
+    const savedOk = saveOps();
     renderRoads(); drawRoadLayer(); renderTabs();
+    if (!savedOk){ saveFailedHint('สถานะถนน'); return; }
+    $('#dlgRoad').close();
     toast('บันทึกสถานะถนนแล้ว', 'ทางหลวงหมายเลข ' + ref + ' — ' + OPS_LEVELS[lv].label);
     if (lv === 3) clearRoute();
   });
@@ -2158,9 +2285,10 @@ function openHospDialog(id, focusStatus){
     const before = hospStatus(id).status;
     const nm = $('#hBy').value.trim();
     if (nm && nm !== profile.name){ profile.name = nm; jsave(KEY_IDENT, profile); }
-    setOpsStatus('hospital', id, level, $('#hNote').value, $('#hInc').value);
-    $('#dlgHosp').close();
+    const savedOk = setOpsStatus('hospital', id, level, $('#hNote').value, $('#hInc').value);
     renderRefer(); renderHospLayer(); renderTabs();
+    if (!savedOk){ saveFailedHint('สถานะโรงพยาบาล'); return; }   // ไม่ปิดฟอร์ม ให้กดบันทึกซ้ำได้
+    $('#dlgHosp').close();
     if (level !== before && level >= 2) alertHospChange(id, level, before);
     else toast('บันทึกสถานะแล้ว', hospById(id).name);
   });
@@ -2276,11 +2404,12 @@ function openHospEdit(id, pickedOverride){
     }else{
       hospitalEdits[hospEditState.id] = Object.assign({}, hospitalEdits[hospEditState.id], patch);
     }
-    saveOps();
+    const savedOk = saveOps();
+    renderRefer(); renderHospLayer(); renderTabs();
+    if (!savedOk){ saveFailedHint('การแก้ไข'); return; }   // ยังไม่ล้าง state เผื่อกดบันทึกซ้ำ
     closeHospEditMarker();
     hospEditState = {id:null, picked:null, marker:null};
     dlg.close();
-    renderRefer(); renderHospLayer(); renderTabs();
     toast('บันทึกแล้ว', name);
   });
   const del = $('#heDel');
@@ -2821,7 +2950,7 @@ function stopPick(){
   $('#hint').classList.remove('on');
   $('#map').classList.remove('picking');
   const span = $('#hint').querySelector('span');
-  if (span) span.textContent = 'แตะบนแผนที่ตรงจุดที่น้ำท่วม';
+  if (span) span.textContent = 'แตะตำแหน่งที่น้ำท่วมบนแผนที่ เพื่อเปิดฟอร์มรายงาน';
   const useMe = $('#btnUseMe');
   if (useMe) useMe.hidden = false;
 }
@@ -2912,6 +3041,7 @@ function openReportForm(pos){
     return;
   }
   pendingPos = pos;
+  pendingRetry = null;          // เริ่มฟอร์มใหม่ = ยกเลิกรายการที่ค้างจากรอบที่บันทึกไม่ได้
   $('#dlgPos').textContent = 'พิกัด ' + pos.lat.toFixed(5) + ', ' + pos.lng.toFixed(5);
   $('#frmReport').reset();
   $('#frmReport input[name=lv][value="2"]').checked = true;
@@ -2939,8 +3069,26 @@ function checkPhone(sel, label){
   return true;
 }
 
+/* ถ้ารอบก่อนบันทึกไม่สำเร็จ เก็บรายงานไว้ให้ลอง save() ซ้ำได้โดยไม่ commit รูปใหม่ */
+let pendingRetry = null;
+
 $('#frmReport').addEventListener('submit', async e => {
   e.preventDefault();
+  if (pendingRetry){
+    const r = pendingRetry;
+    if (save()){
+      pendingRetry = null;
+      $('#dlgReport').close();
+      render();
+      if (mapApi) mapApi.flyTo(r.lat, r.lng, Math.max(mapApi.getZoom(), 14));
+      openDetail(r.id);
+      toast('ส่งรายงานแล้ว', r.place + (r.posts && r.posts[0] && r.posts[0].photos.length
+        ? ' พร้อม ' + r.posts[0].photos.length + ' รูป' : ''));
+    }else{
+      saveFailedHint('รายงาน');
+    }
+    return;
+  }
   if (!pendingPos) return;
   if (!inArea(pendingPos.lat, pendingPos.lng)){
     toast('พิกัดอยู่นอกเขต'+AREA.name, 'รายงานได้เฉพาะในจังหวัด'+AREA.name+'เท่านั้น');
@@ -2968,7 +3116,15 @@ $('#frmReport').addEventListener('submit', async e => {
       r.posts.push({id: uid(), text:'', photos, author, ts: Date.now()});
     }
     reports.push(r);
-    save();
+    if (!save()){
+      // ยังนับว่า "ไม่ส่ง" — เก็บฟอร์มไว้ให้ผู้ใช้แก้ปัญหาแล้วกดส่งซ้ำ
+      pendingRetry = r;
+      render();
+      btn.disabled = false;
+      saveFailedHint('รายงาน');
+      return;
+    }
+    pendingRetry = null;
     $('#dlgReport').close();
     pendingPos = null;
     render();
@@ -2996,7 +3152,13 @@ $('#frmPost').addEventListener('submit', async e => {
     const p = {id:uid(), text:text, photos, author:readAuthor('p'), ts:Date.now()};
     r.posts = r.posts || [];
     r.posts.push(p);
-    save();
+    if (!save()){
+      // บันทึกไม่ได้ = ยังไม่ถือว่าโพสตแล้ว เก็บฟอร์มไว้ให้กดซ้ำหลังแก้ปัญหา
+      render();
+      btn.disabled = false;
+      saveFailedHint('โพสต');
+      return;
+    }
     $('#dlgPost').close();
     postTarget = null;
     render();
@@ -3070,7 +3232,19 @@ document.addEventListener('keydown', e => {
    แผนที่ + ตำแหน่ง
    การคลิกบนแผนที่ถูกผูกไว้ใน initMap() (แยกตาม backend)
 ============================================================ */
-$('#btnReport').onclick = startPick;
+$('#btnReport').onclick = () => {
+  if (!mapApi){
+    // ไม่มีแผนที่ = แตะตำแหน่งไม่ได้ = รายงานไม่ได้ ต้องบอกให้ชัด
+    const why = mapApiError || 'ยังโหลดแผนที่ไม่เสร็จ';
+    toast('เปิดแผนที่ไม่สำเร็จ', 'รายงานน้ำท่วมต้องแตะตำแหน่งบนแผนที่ — ลองรีเฟรชหน้านี้หรือเชื่อมอินเทอร์เน็ต', 'var(--lv3)');
+    const el = $('#map');
+    if (el) el.innerHTML = '<div class="map-dead"><b>เปิดแผนที่ไม่สำเร็จ</b>'
+      + esc(why) + '<br>รายงานน้ำท่วมต้องแตะตำแหน่งบนแผนที่<br>'
+      + 'ลองรีเฟรชหน้านี้ หรือเปิดเน็ตให้ชัดขึ้นแล้วลองใหม่</div>';
+    return;
+  }
+  startPick();
+};
 $('#btnCancelPick').onclick = stopPick;
 $('#btnUseMe').onclick = () => {
   if (!navigator.geolocation){ toast('เบราว์เซอร์นี้ไม่รองรับตำแหน่ง','ลองแตะบนแผนที่แทน'); return; }
@@ -3204,6 +3378,28 @@ $('#btnSettings').onclick = async () => {
   }
   $('#dlgSet').showModal();
 };
+/* ปุ่มช่วยเหลือเรื่องพื้นที่เก็บข้อมูล — ต้องหาเจอได้เสมอ ไม่ใช่รอให้บันทึกล้มเหลวก่อน */
+$('#btnHelpSet').onclick = () => {
+  if (!storeWarnMsg){
+    // ยังไม่เคยล้มเหลว — ยังอย่างน้อยต้องบอกสถานะจริงก่อน
+    if (checkStorageUsable()){
+      toast('ที่เก็บข้อมูลใช้ได้ปกติ', 'เบราว์เซอร์ยอมให้บันทึกข้อมูลลงเครื่องนี้อยู่');
+      return;
+    }
+  }
+  $('#dlgSet').close();
+  showStoreHelp();
+};
+$('#btnTestStore').onclick = () => {
+  const before = storeWarnMsg;
+  const fine = checkStorageUsable();
+  if (fine){
+    toast('ที่เก็บข้อมูลใช้ได้ปกติ', 'บันทึกรายงานได้ตามปกติ');
+  }else{
+    toast('ที่เก็บข้อมูลใช้ไม่ได้', before === storeWarnMsg ? storeWarnMsg : 'ลองแก้ตามคำแนะนำในแถบสีแดง', 'var(--lv3)');
+  }
+};
+
 $('#sHidePhone').onchange = e => {
   $('#sPhoneHint').textContent = e.target.checked
     ? 'เบอร์ของคุณจะไม่แสดงในโพสต (ระบบจะบอกคนอื่นให้ส่งข้อความแทน)'
@@ -3362,6 +3558,10 @@ window.addEventListener('storage', e => {
 setInterval(() => { if (view === 'spots' || view === 'feed') render(); }, 60000);
 
 (function init(){
+  // ตรวจก่อนเป็นอันดับแรก: ถ้าเบราว์เซอร์บันทึกไม่ได้ (โหมดส่วนตัว / ที่เก็บเต็ม)
+  // ต้องบอกผู้ใช้ก่อน ไม่ใช่ปล่อยให้กรอกแล้วข้อมูลหายเงียบ ๆ
+  checkStorageUsable();
+
   const ident = jload(KEY_IDENT, null) || {};
   profile.name = String(ident.name || '');
   profile.phone = String(ident.phone || '');
