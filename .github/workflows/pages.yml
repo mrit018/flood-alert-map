@@ -21,9 +21,10 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    # ตรึงเวอร์ชัน image: ubuntu-latest กำลังจะย้ายไป Ubuntu 26
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # actions/upload-pages-artifact ไม่มีอินพุต exclude
       # จึงต้องเลือกเฉพาะไฟล์เว็บที่ต้องการไปยัง _site ก่อน
@@ -34,20 +35,21 @@ jobs:
           mkdir -p _site
           cp index.html .nojekyll _site/
           test -f _site/index.html || { echo "ไม่พบ index.html"; exit 1; }
-          echo "เตรียมไฟล์แล้ว: $(ls _site | tr '\n' ' ') ($(wc -c < _site/index.html) bytes)"
+          echo "เตรียมไฟล์แล้ว: $(ls -A _site | tr '\n' ' ') ($(wc -c < _site/index.html) bytes)"
 
       - name: ตั้งค่า Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
         with:
-          # ถ้า repo ยังไม่เคยเปิด Pages ให้ action เปิดให้เองแบบ build_type=workflow
-          # (ถ้าเปิดไว้แล้ว ค่านี้ไม่มีผล — ปลอดภัย)
+          # พยายามเปิด Pages ให้เอง (build_type=workflow) ถ้ายังไม่ได้เปิด
+          # ถ้า token สร้างไม่ได้ (เช่น repo private บนแผนที่ไม่รองรับ)
+          # ให้เปิดเองที่ Settings -> Pages -> Source: GitHub Actions แล้ว run ซ้ำ
           enablement: true
 
       - name: อัปโหลดไฟล์เว็บไปยัง artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: _site
 
       - name: deploy ขึ้น GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
